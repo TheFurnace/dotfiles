@@ -1,0 +1,86 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "console_title_template": "{{if .Root}}(Admin) {{end}}{{.Shell}} {{.PWD}}",
+  "version": 3,
+  "blocks": [
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "template": "<cyan>{{ .UserName }}</>@<blue>{{ .HostName }}</> ",
+          "type": "session",
+          "style": "plain"
+        },
+        {
+          "properties": {
+            "cache_duration": "none",
+            "style": "full"
+          },
+          "template": "{{ .Path }} ",
+          "foreground": "magenta",
+          "type": "path",
+          "style": "plain"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "branch_ahead_icon": "\ud83e\udc51",
+            "branch_behind_icon": "\ud83e\udc53",
+            "branch_icon": "",
+            "cache_duration": "none",
+            "fetch_stash_count": true,
+            "fetch_status": true,
+            "fetch_upstream_icon": true,
+            "github_icon": ""
+          },
+          "template": "[{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Staging.Changed }} <green>{{ .Staging.String }}</>{{ end }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if .Working.Changed }} <red>{{ .Working.String }}</>{{ end }}] {{ if gt .StashCount 0 }}* {{ .StashCount }}{{ end }} ",
+          "foreground": "yellow",
+          "type": "git",
+          "style": "plain",
+          "foreground_templates": [
+            "{{ if and (.Ahead) (.Behind) }}red{{ else if ne (.Ahead) (.Behind) }}green{{ end }}"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "cache_duration": "none",
+            "style": "austin"
+          },
+          "template": " {{ .FormattedMs }} ",
+          "foreground": "blue",
+          "type": "executiontime",
+          "style": "plain"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "always_enabled": true,
+            "cache_duration": "none"
+          },
+          "template": "λ ",
+          "foreground": "white",
+          "type": "status",
+          "style": "plain"
+        }
+      ],
+      "newline": true
+    }
+  ]
+}
