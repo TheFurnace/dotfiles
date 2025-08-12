@@ -1,0 +1,56 @@
+function fish_git_prompt  --description "Prompt function for Git"
+	set -l git_status (command git --no-optional-locks '-c' core.quotepath=false '-c' color.status=false status -uall --short --branch 2>/dev/null)
+	test -n "$git_status"
+	
+	set -l indexAdded
+	set -l indexModified
+	set -l indexDeleted
+	set -l indexUnmerged
+	set -l filesAdded
+	set -l filesModified
+	set -l filesDeleted
+	set -l filesUnmerged
+	set -l branch_name ""
+	set -l upstream_name ""
+	set -l aheadBy 0
+	set -l behindBy 0
+	set -l gone_s 0
+	
+	
+	for status in $git_status
+		if string match -rq '^(?<index>[^#])(?<working>.) (?<path1>.*?)(?: -> (?<path2>.*))?$' -- $git_status
+			set -l start_path = $path1[0]
+			if string match '"*"' -- $start_path
+				set start_path -- (string sub -s 2 -e -1 -- $start_path)
+			
+			switch $index[0]
+				case 'A'
+					set -a indexAdded -- $start_path
+				case 'M' 'R' 'C'
+					set -a indexModified -- $start_path
+				case 'D'
+					set -a indexDeleted -- $start_path
+				case 'U'
+					set -a indexUnmerged -- $start_path
+
+			switch $working[0]
+				case 'A'
+					set -a filesAdded -- $start_path
+				case 'M' 'R' 'C'
+					set -a filesModified -- $start_path
+				case 'D'
+					set -a filesDeleted -- $start_path
+				case 'U'
+					set -a filesUnmerged -- $start_path
+
+		else if string match -rq '^## (?<branch>\S+?)(?:\.\.\.(?<upstream>\S+))?(?: \[(?:ahead (?<ahead>\d+))?(?:, )?(?:behind (?<behind>\d+))?(?<gone>gone)?\])?$' -- $git_status
+			set branch_name -- $branch[0]
+			set upstream_name -- $upstream[0]
+			set aheadBy -- $ahead[0]
+			set behindBy -- $behind[0]
+			set gone_s -- $gone[0]
+
+		else if string match rq '^## Initial commit on (?<branch>\S+)$' -- $git_status
+			set branch_name $branch[0]
+	
+	if 	
