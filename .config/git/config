@@ -1,0 +1,23 @@
+[alias]
+    adog = log --all --decorate --oneline --graph
+    br = branch
+    ci = commit
+    cia = "!git commit --amend --date=\"$(date -R)\""
+    ciapf = "!git cia && git push --force"
+    co = checkout
+    cod = checkout develop
+    com = checkout master
+    current-branch = rev-parse --abbrev-ref HEAD
+    fest = "!git fetch && git status"
+    locals = for-each-ref --format '%(refname:short)' refs/heads
+    lsbr = show-branch
+    mkbr = checkout -b
+    nuke = clean -xdf
+    pushf = push --force
+    push-new = ! git push --set-upstream origin `git current-branch`
+    rmbr = branch -D
+    rmlocals = ! git branch -D `git locals`
+    st = status
+[user]
+	email = ferdanielq@outlook.com
+	name = Fernando Quintero
