@@ -1,5 +1,6 @@
 require "config.lazy"
 require "user.treesitter"
+require "user.format"
 
 vim.api.nvim_create_user_command('SyntaxHere', function()
 	local pos = vim.api.nvim_win_get_cursor(0)
