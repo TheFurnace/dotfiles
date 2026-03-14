@@ -22,3 +22,5 @@
 [user]
 	email = ferdanielq@outlook.com
 	name = Fernando Quintero
+[core]
+	editor = nvim
