@@ -19,6 +19,8 @@
     unstage = restore --staged
     unchange = restore --worktree
     untrack = rm --cached
+[init]
+	defaultBranch = main
 [credential]
 	helper = github-app
 [user]
