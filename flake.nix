@@ -2,23 +2,26 @@
   description = "Personal dotfiles";
 
   outputs = { self }: {
-    homeManagerModules.default = { ... }: {
-      # ── oh-my-posh theme ───────────────────────────────────────────────────
-      programs.oh-my-posh.settings = builtins.fromJSON (
-        builtins.readFile "${self}/.config/oh-my-posh/themes/lambda.omp.json"
-      );
-
-      # ── Git ────────────────────────────────────────────────────────────────
-      programs.git.includes = [{ path = "${self}/.config/git/config"; }];
-
-      # ── Fish functions ─────────────────────────────────────────────────────
-      xdg.configFile."fish/functions/bwrap-clean.fish".source =
-        "${self}/.config/fish/functions/bwrap-clean.fish";
-      xdg.configFile."fish/functions/config.fish".source =
-        "${self}/.config/fish/functions/config.fish";
-
-      # ── Neovim ────────────────────────────────────────────────────────────
-      xdg.configFile."nvim".source = "${self}/.config/nvim";
-    };
+    homeManagerModules.default = { lib, ... }:
+      let
+        # Recursively build xdg.configFile entries for every regular file under `dir`.
+        configFilesFrom = dir: prefix:
+          let entries = builtins.readDir dir;
+          in lib.foldl' (acc: name:
+            let type = entries.${name};
+            in if type == "regular"
+               then acc // { "${prefix}${name}".source = "${dir}/${name}"; }
+               else if type == "directory"
+               then acc // (configFilesFrom "${dir}/${name}" "${prefix}${name}/")
+               else acc
+          ) { } (builtins.attrNames entries);
+      in
+      {
+        xdg.configFile =
+          configFilesFrom "${self}/.config/git"        "git/"        //
+          configFilesFrom "${self}/.config/fish"       "fish/"       //
+          configFilesFrom "${self}/.config/oh-my-posh" "oh-my-posh/" //
+          configFilesFrom "${self}/.config/nvim"       "nvim/";
+      };
   };
 }
