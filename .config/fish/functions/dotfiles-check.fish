@@ -9,12 +9,13 @@ function _dotfiles_check_dir --description "Recursive tree helper for dotfiles-c
         set -l path $children[$i]
         set -l name (basename $path)
 
+        set -l child_prefix
         if test $i -eq $total
             printf "%s└── " $prefix
-            set -l child_prefix "$prefix    "
+            set child_prefix "$prefix    "
         else
             printf "%s├── " $prefix
-            set -l child_prefix "$prefix│   "
+            set child_prefix "$prefix│   "
         end
 
         if test -L $path
@@ -56,12 +57,13 @@ function dotfiles-check --description "Show which ~/.config files are dotfiles s
     set -l total (count $active_dirs)
     for i in (seq $total)
         set -l dir $active_dirs[$i]
+        set -l child_prefix
         if test $i -eq $total
             printf "└── "
-            set -l child_prefix "    "
+            set child_prefix "    "
         else
             printf "├── "
-            set -l child_prefix "│   "
+            set child_prefix "│   "
         end
         set_color --bold; echo $dir; set_color normal
         _dotfiles_check_dir $HOME/.config/$dir $child_prefix
