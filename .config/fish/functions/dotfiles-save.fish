@@ -1,4 +1,4 @@
-function dotfiles-save --description "Copy a ~/.config file into its dotfiles repo equivalent and stage it"
+function dotfiles-save --description "Move a ~/.config file into dotfiles, replace the original with a symlink, and stage it"
     if test (count $argv) -ne 1
         echo "Usage: dotfiles-save <path>"
         echo "  Accepts an absolute path or a path relative to ~/.config/"
@@ -31,10 +31,11 @@ function dotfiles-save --description "Copy a ~/.config file into its dotfiles re
     set -l dst $dotfiles/.config/$rel
 
     mkdir -p (dirname $dst)
-    cp $src $dst
+    mv -f $src $dst
+    ln -s $dst $src
     git -C $dotfiles add -f .config/$rel
 
-    set_color green; printf "saved & staged"; set_color normal
+    set_color green; printf "saved, linked & staged"; set_color normal
     printf "  %s\n" $rel
     printf "run: git -C %s commit\n" $dotfiles
 end

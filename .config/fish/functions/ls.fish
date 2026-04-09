@@ -1,3 +1,3 @@
-function ls --wraps=ls --description 'List directory contents'
-    command ls --color=auto --group-directories-first $argv
+function ls --description 'alias ls=ls --group-directories-first --color=tty'
+    command ls --group-directories-first --color=tty $argv
 end
