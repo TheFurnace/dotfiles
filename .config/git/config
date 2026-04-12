@@ -19,8 +19,6 @@
     unstage = restore --staged
     unchange = restore --worktree
     untrack = rm --cached
-[credential]
-	helper = github-app
 [user]
 	email = ferdanielq@outlook.com
 	name = Fernando Quintero
