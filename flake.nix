@@ -65,7 +65,7 @@
 
         in
         {
-          imports = [ nix-index-database.hmModules.nix-index ];
+          imports = [ nix-index-database.homeModules.nix-index ];
 
           options.dotfiles = {
 
