@@ -19,8 +19,5 @@
     unstage = restore --staged
     unchange = restore --worktree
     untrack = rm --cached
-[user]
-	email = ferdanielq@outlook.com
-	name = Fernando Quintero
 [core]
 	editor = nvim

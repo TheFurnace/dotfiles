@@ -2,7 +2,7 @@
 
 ## Project purpose
 
-Personal home-manager environment, managed as a flake.
+Home-manager environment, managed as a flake.
 Consumed by the NixOS config (`~/nixos`) as a flake input, and usable standalone on any machine.
 
 ## Design goals
@@ -45,7 +45,7 @@ setup.sh             # bootstrap script for first-time setup on a new machine
    ```
 3. **Apply** to the running user environment:
    ```
-   home-manager switch --flake .#ferndq
+   home-manager switch --flake .#example
    ```
 4. **Commit** once the result is confirmed working. Keep commits atomic and scoped to one logical change.
 5. **Update inputs** intentionally, not as a side effect of other changes:

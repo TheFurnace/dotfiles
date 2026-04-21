@@ -49,7 +49,7 @@
         system ? defaultSystem,
         hostname,
         username,
-        homeDirectory ? "/home/${username}",
+        homeDirectory ? null,
         stateVersion,
         nixosStateVersion ? stateVersion,
         mutable ? false,
@@ -57,6 +57,12 @@
         user ? { },
         extraModules ? [ ],
       }:
+        let
+          effectiveHomeDirectory =
+            if homeDirectory != null then homeDirectory
+            else if user ? home then user.home
+            else "/home/${username}";
+        in
         nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
@@ -67,13 +73,15 @@
 
               users.users.${username} = {
                 isNormalUser = true;
-                home = homeDirectory;
+                home = effectiveHomeDirectory;
                 extraGroups = [ "wheel" ];
               } // user;
 
               dotfiles = {
                 enable = true;
-                inherit username homeDirectory stateVersion mutable localPath;
+                username = username;
+                homeDirectory = effectiveHomeDirectory;
+                inherit stateVersion mutable localPath;
               };
             })
           ] ++ extraModules;
@@ -223,10 +231,8 @@
       nixosModule = { config, lib, pkgs, ... }:
         let
           cfg = config.dotfiles;
-          systemUserHome = lib.attrByPath [ "users" "users" cfg.username "home" ] null config;
           effectiveHomeDirectory =
             if cfg.homeDirectory != null then cfg.homeDirectory
-            else if systemUserHome != null then systemUserHome
             else "/home/${cfg.username}";
         in
         {
@@ -243,7 +249,7 @@
             homeDirectory = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = null;
-              description = "Optional home directory override. By default this is taken from users.users.<name>.home, or /home/<name> if unset.";
+              description = "Optional home directory override. Defaults to /home/<name>. If your NixOS user uses a different home path, set this explicitly.";
             };
 
             stateVersion = lib.mkOption {
@@ -265,13 +271,6 @@
           };
 
           config = lib.mkIf cfg.enable {
-            assertions = [
-              {
-                assertion = cfg.homeDirectory == null || systemUserHome == null || cfg.homeDirectory == systemUserHome;
-                message = "dotfiles.homeDirectory must match users.users.${cfg.username}.home when both are set.";
-              }
-            ];
-
             programs.fish.enable = true;
             environment.shells = [ pkgs.fish ];
 
@@ -306,9 +305,9 @@
       homeManagerModules.default = homeModule;
       nixosModules.default = nixosModule;
 
-      homeConfigurations.ferndq = mkHomeConfiguration {
-        username = "ferndq";
-        homeDirectory = "/home/ferndq";
+      homeConfigurations.example = mkHomeConfiguration {
+        username = "demo";
+        homeDirectory = "/home/demo";
         stateVersion = "25.11";
       };
 

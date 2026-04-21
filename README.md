@@ -23,6 +23,8 @@ The module installs or enables everything needed for the environment in this rep
 - `nix-your-shell`
 - `fira-code` plus user fontconfig so the kitty font setting works
 
+Git aliases and editor settings are included, but `git user.name` and `git user.email` are intentionally left unset so the flake stays generic.
+
 Config files are sourced directly from `.config/`:
 
 | Program | Source directory |
@@ -60,7 +62,7 @@ You can wire the NixOS module manually:
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     dotfiles = {
-      url = "github:TheFurnace/dotfiles";
+      url = "github:your-user/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -97,7 +99,7 @@ Or use the helper this flake exports:
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     dotfiles = {
-      url = "github:TheFurnace/dotfiles";
+      url = "github:your-user/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -138,6 +140,8 @@ dotfiles = {
 
 In mutable mode, edits to existing files under `.config/` take effect immediately. Adding or removing files still requires a rebuild.
 
+If your NixOS user has a nonstandard home directory, also set `dotfiles.homeDirectory` to match it.
+
 ---
 
 ## Non-NixOS or standalone Home Manager
@@ -166,7 +170,7 @@ You can still wire the module manually:
     };
 
     dotfiles = {
-      url = "github:TheFurnace/dotfiles";
+      url = "github:your-user/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -208,7 +212,7 @@ Or, more simply, use the helper this flake exports:
     };
 
     dotfiles = {
-      url = "github:TheFurnace/dotfiles";
+      url = "github:your-user/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -244,15 +248,15 @@ Depending on the distro, the fish path may need to exist in `/etc/shells` first.
 
 ## Standalone configs bundled in this repo
 
-This flake still exposes a personal standalone configuration at `.#ferndq`:
+This flake exposes a generic standalone example configuration at `.#example`:
 
 ```bash
 git add -A
 nix flake check
-home-manager switch --flake .#ferndq
+home-manager switch --flake .#example
 ```
 
-But standalone usage is now less hard-coded because the flake also exports `dotfiles.lib.mkHomeConfiguration`, which lets another flake create a Home Manager configuration with just:
+Treat that built-in output as an example. For real usage, standalone consumption is better done with `dotfiles.lib.mkHomeConfiguration`, which lets another flake create a Home Manager configuration with just:
 
 ```nix
 dotfiles.lib.mkHomeConfiguration {
@@ -275,7 +279,7 @@ The helper also supports:
 
 - `hostname`
 - `username`
-- `homeDirectory` (optional; defaults to `users.users.<name>.home`, or `/home/${username}` if unset)
+- `homeDirectory` (optional; defaults to `/home/${username}`. If your NixOS user has a different home path, set this explicitly.)
 - `stateVersion` for Home Manager
 - `nixosStateVersion` (defaults to `stateVersion`)
 - `system`
@@ -304,7 +308,7 @@ The helper also supports:
 |---|---|---|---|
 | `dotfiles.enable` | `bool` | `false` | Enable the NixOS integration. |
 | `dotfiles.username` | `str` | — | User whose Home Manager profile should receive the dotfiles. |
-| `dotfiles.homeDirectory` | `null or str` | `null` | Optional home directory override. Defaults to `users.users.<name>.home`, or `/home/<name>` if unset. |
+| `dotfiles.homeDirectory` | `null or str` | `null` | Optional home directory override. Defaults to `/home/<name>`. If your NixOS user uses a different home path, set this explicitly. |
 | `dotfiles.stateVersion` | `str` | — | Home Manager state version for that user. |
 | `dotfiles.mutable` | `bool` | `false` | Forwarded to the Home Manager module. |
 | `dotfiles.localPath` | `str` | `""` | Forwarded to the Home Manager module when mutable mode is enabled. |
