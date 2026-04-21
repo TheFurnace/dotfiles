@@ -98,6 +98,8 @@
 
             # ── Packages ───────────────────────────────────────────────────
             home.packages = with pkgs; [
+              fish
+              git
               kitty
               nix-your-shell
               oh-my-posh
@@ -146,6 +148,10 @@
                 # direnv hook — conf.d/ is auto-sourced by fish
                 "fish/conf.d/direnv.fish".text = ''
                   ${pkgs.direnv}/bin/direnv hook fish | source
+                '';
+                # nix-your-shell — keeps fish as the active shell inside `nix shell` / `nix develop`
+                "fish/conf.d/nix-your-shell.fish".text = ''
+                  ${pkgs.nix-your-shell}/bin/nix-your-shell fish | source
                 '';
               };
 
