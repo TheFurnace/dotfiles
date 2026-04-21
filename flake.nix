@@ -151,8 +151,8 @@
               }
             ];
 
-            home.username = cfg.username;
-            home.homeDirectory = cfg.homeDirectory;
+            home.username = lib.mkDefault cfg.username;
+            home.homeDirectory = lib.mkDefault cfg.homeDirectory;
 
             # Helps downstream tools pick fish even outside NixOS.
             home.sessionVariables.SHELL = "${pkgs.fish}/bin/fish";
@@ -223,6 +223,11 @@
       nixosModule = { config, lib, pkgs, ... }:
         let
           cfg = config.dotfiles;
+          systemUserHome = lib.attrByPath [ "users" "users" cfg.username "home" ] null config;
+          effectiveHomeDirectory =
+            if cfg.homeDirectory != null then cfg.homeDirectory
+            else if systemUserHome != null then systemUserHome
+            else "/home/${cfg.username}";
         in
         {
           imports = [ home-manager.nixosModules.home-manager ];
@@ -236,8 +241,9 @@
             };
 
             homeDirectory = lib.mkOption {
-              type = lib.types.str;
-              description = "Absolute path to the user's home directory, passed through to Home Manager.";
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Optional home directory override. By default this is taken from users.users.<name>.home, or /home/<name> if unset.";
             };
 
             stateVersion = lib.mkOption {
@@ -259,9 +265,20 @@
           };
 
           config = lib.mkIf cfg.enable {
+            assertions = [
+              {
+                assertion = cfg.homeDirectory == null || systemUserHome == null || cfg.homeDirectory == systemUserHome;
+                message = "dotfiles.homeDirectory must match users.users.${cfg.username}.home when both are set.";
+              }
+            ];
+
             programs.fish.enable = true;
             environment.shells = [ pkgs.fish ];
-            users.users.${cfg.username}.shell = pkgs.fish;
+
+            users.users.${cfg.username} = {
+              home = lib.mkDefault effectiveHomeDirectory;
+              shell = pkgs.fish;
+            };
 
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
@@ -271,7 +288,7 @@
               dotfiles = {
                 enable = true;
                 username = cfg.username;
-                homeDirectory = cfg.homeDirectory;
+                homeDirectory = effectiveHomeDirectory;
                 mutable = cfg.mutable;
                 localPath = cfg.localPath;
               };

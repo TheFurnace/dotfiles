@@ -80,7 +80,6 @@ You can wire the NixOS module manually:
           dotfiles = {
             enable = true;
             username = "alice";
-            homeDirectory = "/home/alice";
             stateVersion = "25.11";
           };
         }
@@ -130,7 +129,6 @@ For live editing from a local checkout:
 dotfiles = {
   enable = true;
   username = "alice";
-  homeDirectory = "/home/alice";
   stateVersion = "25.11";
 
   mutable = true;
@@ -277,7 +275,7 @@ The helper also supports:
 
 - `hostname`
 - `username`
-- `homeDirectory` (defaults to `/home/${username}`)
+- `homeDirectory` (optional; defaults to `users.users.<name>.home`, or `/home/${username}` if unset)
 - `stateVersion` for Home Manager
 - `nixosStateVersion` (defaults to `stateVersion`)
 - `system`
@@ -306,7 +304,7 @@ The helper also supports:
 |---|---|---|---|
 | `dotfiles.enable` | `bool` | `false` | Enable the NixOS integration. |
 | `dotfiles.username` | `str` | — | User whose Home Manager profile should receive the dotfiles. |
-| `dotfiles.homeDirectory` | `str` | — | Home directory passed through to Home Manager. |
+| `dotfiles.homeDirectory` | `null or str` | `null` | Optional home directory override. Defaults to `users.users.<name>.home`, or `/home/<name>` if unset. |
 | `dotfiles.stateVersion` | `str` | — | Home Manager state version for that user. |
 | `dotfiles.mutable` | `bool` | `false` | Forwarded to the Home Manager module. |
 | `dotfiles.localPath` | `str` | `""` | Forwarded to the Home Manager module when mutable mode is enabled. |
