@@ -2,11 +2,12 @@
 
 Plug-and-play dotfiles for Home Manager and NixOS.
 
-This flake now exposes three useful entry points:
+This flake now exposes four useful entry points:
 
 - `homeManagerModules.default` — use this in standalone Home Manager or on non-NixOS systems
 - `nixosModules.default` — use this on NixOS for the full plug-and-play setup, including fish as the user's login shell
 - `lib.mkHomeConfiguration` — helper for creating a standalone Home Manager configuration without copying boilerplate
+- `lib.mkNixosConfiguration` — helper for creating a NixOS configuration with the dotfiles module and a fish login shell already wired
 
 ## What the module configures
 
@@ -51,6 +52,8 @@ This module:
 
 ### Example
 
+You can wire the NixOS module manually:
+
 ```nix
 {
   inputs = {
@@ -82,6 +85,30 @@ This module:
           };
         }
       ];
+    };
+  };
+}
+```
+
+Or use the helper this flake exports:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    dotfiles = {
+      url = "github:TheFurnace/dotfiles";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { dotfiles, ... }: {
+    nixosConfigurations.my-machine = dotfiles.lib.mkNixosConfiguration {
+      hostname = "my-machine";
+      username = "alice";
+      stateVersion = "25.11";
+      extraModules = [ ./configuration.nix ];
     };
   };
 }
@@ -242,6 +269,21 @@ The helper also supports:
 - `system`
 - `mutable`
 - `localPath`
+- `extraModules`
+
+## NixOS helper options: `lib.mkNixosConfiguration`
+
+`mkNixosConfiguration` accepts:
+
+- `hostname`
+- `username`
+- `homeDirectory` (defaults to `/home/${username}`)
+- `stateVersion` for Home Manager
+- `nixosStateVersion` (defaults to `stateVersion`)
+- `system`
+- `mutable`
+- `localPath`
+- `user` for extra `users.users.<name>` fields
 - `extraModules`
 
 ---

@@ -45,6 +45,40 @@
           ] ++ extraModules;
         };
 
+      mkNixosConfiguration = {
+        system ? defaultSystem,
+        hostname,
+        username,
+        homeDirectory ? "/home/${username}",
+        stateVersion,
+        nixosStateVersion ? stateVersion,
+        mutable ? false,
+        localPath ? "",
+        user ? { },
+        extraModules ? [ ],
+      }:
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            self.nixosModules.default
+            ({ ... }: {
+              networking.hostName = hostname;
+              system.stateVersion = nixosStateVersion;
+
+              users.users.${username} = {
+                isNormalUser = true;
+                home = homeDirectory;
+                extraGroups = [ "wheel" ];
+              } // user;
+
+              dotfiles = {
+                enable = true;
+                inherit username homeDirectory stateVersion mutable localPath;
+              };
+            })
+          ] ++ extraModules;
+        };
+
       homeModule = { config, lib, pkgs, ... }:
         let
           cfg = config.dotfiles;
@@ -248,7 +282,9 @@
         };
     in
     {
-      lib.mkHomeConfiguration = mkHomeConfiguration;
+      lib = {
+        inherit mkHomeConfiguration mkNixosConfiguration;
+      };
 
       homeManagerModules.default = homeModule;
       nixosModules.default = nixosModule;
@@ -259,27 +295,14 @@
         stateVersion = "25.11";
       };
 
-      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
-        system = defaultSystem;
-        modules = [
-          self.nixosModules.default
+      nixosConfigurations.example = mkNixosConfiguration {
+        hostname = "dotfiles-example";
+        username = "demo";
+        homeDirectory = "/home/demo";
+        stateVersion = "25.11";
+        extraModules = [
           {
             boot.isContainer = true;
-            networking.hostName = "dotfiles-example";
-            system.stateVersion = "25.11";
-
-            users.users.demo = {
-              isNormalUser = true;
-              home = "/home/demo";
-              extraGroups = [ "wheel" ];
-            };
-
-            dotfiles = {
-              enable = true;
-              username = "demo";
-              homeDirectory = "/home/demo";
-              stateVersion = "25.11";
-            };
           }
         ];
       };
