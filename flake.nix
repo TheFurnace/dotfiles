@@ -29,9 +29,9 @@
         modules = [
           self.homeManagerModules.default
           {
-            home.username      = "ferndq";
-            home.homeDirectory = "/home/ferndq";
-            home.stateVersion  = "25.11";
+            dotfiles.username      = "ferndq";
+            dotfiles.homeDirectory = "/home/ferndq";
+            home.stateVersion      = "25.11";
           }
         ];
       };
@@ -69,6 +69,16 @@
 
           options.dotfiles = {
 
+            username = lib.mkOption {
+              type        = lib.types.str;
+              description = "The home-manager user (sets home.username).";
+            };
+
+            homeDirectory = lib.mkOption {
+              type        = lib.types.str;
+              description = "Absolute path to the user's home directory (sets home.homeDirectory).";
+            };
+
             mutable = lib.mkOption {
               type    = lib.types.bool;
               default = false;
@@ -95,6 +105,10 @@
           };
 
           config = {
+
+            home.username      = cfg.username;
+            home.homeDirectory = cfg.homeDirectory;
+
 
             # ── Packages ───────────────────────────────────────────────────
             home.packages = with pkgs; [

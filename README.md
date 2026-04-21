@@ -53,7 +53,7 @@ inputs = {
   };
 
   dotfiles = {
-    url = "github:ferndq/dotfiles";   # adjust to your actual remote
+    url = "github:TheFurnace/dotfiles";   # adjust to your actual remote
     inputs.nixpkgs.follows = "nixpkgs";
   };
 };
@@ -77,7 +77,7 @@ inputs = {
     };
 
     dotfiles = {
-      url = "github:ferndq/dotfiles";   # adjust to your actual remote
+      url = "github:TheFurnace/dotfiles";   # adjust to your actual remote
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -92,9 +92,9 @@ inputs = {
             imports = [ dotfiles.homeManagerModules.default ];
 
             # Required — these are not set by the module itself
-            home.username      = "alice";
-            home.homeDirectory = "/home/alice";
-            home.stateVersion  = "25.11";
+            dotfiles.username      = "alice";
+            dotfiles.homeDirectory = "/home/alice";
+            home.stateVersion      = "25.11";
 
             # Optional dotfiles options (see below)
             dotfiles.mutable   = false;
@@ -120,7 +120,7 @@ inputs = {
     };
 
     dotfiles = {
-      url = "github:ferndq/dotfiles";   # adjust to your actual remote
+      url = "github:TheFurnace/dotfiles";   # adjust to your actual remote
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -135,9 +135,9 @@ inputs = {
       modules = [
         dotfiles.homeManagerModules.default
         {
-          home.username      = "alice";
-          home.homeDirectory = "/home/alice";
-          home.stateVersion  = "25.11";
+          dotfiles.username      = "alice";
+          dotfiles.homeDirectory = "/home/alice";
+          home.stateVersion      = "25.11";
         }
       ];
     };
@@ -157,6 +157,8 @@ home-manager switch --flake .#alice
 
 | Option | Type | Default | Description |
 |---|---|---|---|
+| `dotfiles.username` | `str` | — | The home-manager user. Sets `home.username`. **Required.** |
+| `dotfiles.homeDirectory` | `str` | — | Absolute path to the user's home directory. Sets `home.homeDirectory`. **Required.** |
 | `dotfiles.mutable` | `bool` | `false` | When `true`, config files are live symlinks into `localPath` instead of Nix store copies. Edits to existing files take effect immediately (e.g. after `exec fish`). Adding or removing files still requires a rebuild. |
 | `dotfiles.localPath` | `str` | `""` | Absolute path to the local checkout of this repo. Required (and only used) when `mutable = true`. |
 
