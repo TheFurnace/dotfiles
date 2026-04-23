@@ -107,7 +107,7 @@ in
     home.packages = with pkgs; [
       fish
       fira-code
-      gcc
+      clang
       git
       kitty
       nix-your-shell
