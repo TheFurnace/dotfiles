@@ -4,6 +4,13 @@ let
   # Local shorthand for the module's option namespace.
   cfg = config.dotfiles;
 
+  gitCompletionPwshSrc = pkgs.fetchFromGitHub {
+    owner = "kzrnm";
+    repo = "git-completion-pwsh";
+    rev = "v1.4.0";
+    hash = "sha256-0wc4ae731oT59gyplEnw92a8Ce1GaxmE9zqn/x7TA2U=";
+  };
+
   # Recursively map files from this repo's .config tree into xdg.configFile.
   #
   # relDir tracks the source path below .config/ inside the flake.
@@ -104,6 +111,7 @@ in
       kitty
       nix-your-shell
       oh-my-posh
+      powershell
     ];
 
     programs.nix-index-database.comma.enable = true;
@@ -135,6 +143,7 @@ in
       configFilesFrom "kitty" "kitty/" //
       configFilesFrom "nvim" "nvim/" //
       configFilesFrom "oh-my-posh" "oh-my-posh/" //
+      configFilesFrom "powershell" "powershell/" //
       {
         # These generated snippets wire package-provided shell hooks into fish
         # without handing ownership of fish/config.fish to Home Manager's
@@ -147,6 +156,11 @@ in
           ${pkgs.nix-your-shell}/bin/nix-your-shell fish | source
         '';
       };
+
+    xdg.dataFile."powershell/Modules/git-completion" = {
+      source = "${gitCompletionPwshSrc}/src";
+      recursive = true;
+    };
 
     # On non-NixOS platforms we cannot reliably change the account login shell
     # from Home Manager, so emit a one-time reminder after activation.
