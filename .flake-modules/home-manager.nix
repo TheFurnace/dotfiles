@@ -107,6 +107,7 @@ in
     home.packages = with pkgs; [
       fish
       fira-code
+      gcc
       git
       kitty
       nix-your-shell
