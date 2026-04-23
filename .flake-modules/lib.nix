@@ -1,8 +1,11 @@
 { nixpkgs, home-manager, homeModule, nixosModule }:
 let
+  # Keep helper defaults centralized so exported constructors behave the same.
   defaultSystem = "x86_64-linux";
 in
 {
+  # Build a standalone Home Manager configuration that turns the dotfiles
+  # module on with a small amount of caller-provided identity data.
   mkHomeConfiguration = {
     system ? defaultSystem,
     username,
@@ -15,6 +18,8 @@ in
     home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.${system};
       modules = [
+        # Compose the reusable module with the minimal option values that every
+        # concrete Home Manager configuration must provide.
         homeModule
         {
           dotfiles = {
@@ -27,6 +32,8 @@ in
       ] ++ extraModules;
     };
 
+  # Build a NixOS system configuration that also provisions the target user's
+  # Home Manager environment and fish login shell.
   mkNixosConfiguration = {
     system ? defaultSystem,
     hostname,
@@ -40,6 +47,8 @@ in
     extraModules ? [ ],
   }:
     let
+      # Keep the user's home path consistent across users.users and the nested
+      # Home Manager configuration.
       effectiveHomeDirectory =
         if homeDirectory != null then homeDirectory
         else if user ? home then user.home
@@ -48,6 +57,7 @@ in
     nixpkgs.lib.nixosSystem {
       inherit system;
       modules = [
+        # Compose the reusable NixOS module with a small host-specific shim.
         nixosModule
         ({ ... }: {
           networking.hostName = hostname;
