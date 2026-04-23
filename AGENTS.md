@@ -79,7 +79,8 @@ When `dotfiles.mutable = true` and `dotfiles.localPath` points to this checkout,
 - `flake.nix` walks `.config/` at evaluation time using `builtins.readDir`. New subdirectories are picked up automatically on the next rebuild; no manual wiring is needed.
 - `nix-index-database` is used instead of running `nix-index` locally (which gets OOM-killed). The `comma` integration is enabled via `programs.nix-index-database.comma.enable`.
 
-Commit guidance
+## Commits guidance
 
-- When changing Nix or Home Manager config: run `nix flake check` to validate, then commit with a short, descriptive message.
+- When changing Nix or Home Manager config: run `nix flake check` to validate before committing.
+- After any stopping point, commit with a descriptive message.
 
