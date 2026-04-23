@@ -1,4 +1,5 @@
-require "config.lazy"
+require "config.pack"
+require "user.colorscheme"
 require "user.treesitter"
 require "user.format"
 
