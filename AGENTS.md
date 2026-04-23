@@ -78,3 +78,8 @@ When `dotfiles.mutable = true` and `dotfiles.localPath` points to this checkout,
 - Do not enable `programs.fish` — the module owns `fish/config.fish` directly via `xdg.configFile` and the two will conflict.
 - `flake.nix` walks `.config/` at evaluation time using `builtins.readDir`. New subdirectories are picked up automatically on the next rebuild; no manual wiring is needed.
 - `nix-index-database` is used instead of running `nix-index` locally (which gets OOM-killed). The `comma` integration is enabled via `programs.nix-index-database.comma.enable`.
+
+Commit guidance
+
+- When changing Nix or Home Manager config: run `nix flake check` to validate, then commit with a short, descriptive message.
+
