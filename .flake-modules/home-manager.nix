@@ -113,6 +113,7 @@ in
       nix-your-shell
       oh-my-posh
       powershell
+      gh
     ];
 
     programs.nix-index-database.comma.enable = true;
