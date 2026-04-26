@@ -153,6 +153,7 @@ in
           force = true;
           text = ''
             ${pkgs.direnv}/bin/direnv hook fish | source
+            ${pkgs.direnv}/bin/direnv export fish | source
           '';
         };
 
