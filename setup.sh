@@ -30,18 +30,18 @@ while IFS= read -r -d '' src; do
         # Already a symlink — update it
         ln -sf "$src" "$dst"
         printf "${GREEN}linked${RESET}    %s\n" "$rel"
-        (( linked++ ))
+        (( linked += 1 ))
     elif [ -e "$dst" ]; then
         # Regular file — back it up first
         mv "$dst" "$dst.bak"
         ln -s "$src" "$dst"
         printf "${YELLOW}backed up${RESET} %s  →  %s.bak\n" "$rel" "$rel"
-        (( backed_up++ ))
-        (( linked++ ))
+        (( backed_up += 1 ))
+        (( linked += 1 ))
     else
         ln -s "$src" "$dst"
         printf "${GREEN}linked${RESET}    %s\n" "$rel"
-        (( linked++ ))
+        (( linked += 1 ))
     fi
 done < <(find "$SRC" -type f -print0 | sort -z)
 

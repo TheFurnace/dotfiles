@@ -17,6 +17,7 @@ The module installs or enables everything needed for the environment in this rep
 - `oh-my-posh`
 - `git`
 - `kitty`
+- `just`
 - `neovim`
 - `direnv` + `nix-direnv`
 - `nix-index-database` + `comma`
@@ -326,6 +327,24 @@ nix flake update dotfiles
 Then rebuild with either `nixos-rebuild` or `home-manager switch`, depending on how you consume it.
 
 ---
+
+## Helper scripts
+
+For mutable-mode workflows from a local checkout, this repo also includes a `justfile`:
+
+```bash
+just link-config
+just pull-config
+just pull-config-apply
+```
+
+Recipes:
+
+- `just link-config` — runs `./setup.sh` to symlink files from this repo's `.config/` into `~/.config`
+- `just pull-config [path ...]` — dry-run by default; shows which regular files exist in `~/.config` but not yet in this repo's `.config/`
+- `just pull-config-apply [path ...]` — copies those new regular files into this repo's `.config/`, stages them in git, and preserves paths
+
+`pull-config` accepts absolute paths or paths relative to `~/.config/`. With no paths, it scans the entire config tree.
 
 ## Notes
 

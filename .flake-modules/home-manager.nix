@@ -109,6 +109,7 @@ in
       fira-code
       clang
       git
+      just
       kitty
       ripgrep
       nix-your-shell
