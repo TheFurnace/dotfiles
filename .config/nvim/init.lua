@@ -1,9 +1,19 @@
 require "config.pack"
-require "user.colorscheme"
-require "user.telescope"
-require "user.diffview"
-require "user.treesitter"
-require "user.format"
+
+local function safe_require(module)
+	local ok, err = pcall(require, module)
+	if not ok then
+		vim.schedule(function()
+			vim.notify(string.format("Failed to load %s: %s", module, err), vim.log.levels.WARN)
+		end)
+	end
+end
+
+safe_require "user.colorscheme"
+safe_require "user.telescope"
+safe_require "user.diffview"
+safe_require "user.treesitter"
+safe_require "user.format"
 
 vim.api.nvim_create_user_command('SyntaxHere', function()
 	local pos = vim.api.nvim_win_get_cursor(0)
