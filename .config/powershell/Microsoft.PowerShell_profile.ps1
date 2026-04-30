@@ -4,6 +4,8 @@ if (Test-Path $ompConfig) {
     oh-my-posh init pwsh --config $ompConfig | Invoke-Expression
 }
 
+zoxide init powershell | Invoke-Expression
+
 Import-Module git-completion
 
 if (Get-Command Set-PSReadLineKeyHandler -ErrorAction SilentlyContinue) {

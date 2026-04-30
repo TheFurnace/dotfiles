@@ -115,6 +115,7 @@ in
       nix-your-shell
       oh-my-posh
       powershell
+      zoxide
       gh
     ];
 
@@ -164,6 +165,13 @@ in
           force = true;
           text = ''
             ${pkgs.nix-your-shell}/bin/nix-your-shell fish | source
+          '';
+        };
+
+        "fish/conf.d/zoxide.fish" = {
+          force = true;
+          text = ''
+            ${pkgs.zoxide}/bin/zoxide init fish | source
           '';
         };
       };
