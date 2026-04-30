@@ -1,5 +1,7 @@
 require "config.pack"
 require "user.colorscheme"
+require "user.telescope"
+require "user.diffview"
 require "user.treesitter"
 require "user.format"
 

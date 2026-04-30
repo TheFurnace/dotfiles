@@ -110,6 +110,7 @@ in
       clang
       git
       kitty
+      ripgrep
       nix-your-shell
       oh-my-posh
       powershell
