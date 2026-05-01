@@ -9,8 +9,9 @@
 #   ./pull-config.sh [--apply] [path ...]
 #
 # Defaults to a dry run. Pass --apply to copy and stage files.
-# Paths may be absolute or relative to ~/.config/. With no paths, the entire
-# ~/.config tree is scanned.
+# Paths may be absolute or relative to ~/.config/, but they must live under a
+# top-level entry that already exists in this repo's .config/. With no paths,
+# the script scans only those matching managed subtrees.
 
 set -euo pipefail
 
@@ -24,9 +25,12 @@ BOLD='\033[1m'
 RESET='\033[0m'
 
 usage() {
-    echo "Usage: $(basename "$0") [--apply] [path ...]"
-    echo "  Dry-run by default; pass --apply to copy and stage files"
+    echo "Usage: $(basename "$0") [--apply|-a] [path ...]"
+    echo "  Dry-run by default; pass --apply or -a to copy and stage files"
     echo "  Accepts absolute paths or paths relative to ~/.config/"
+    echo "  Flags may appear before or after paths"
+    echo "  Only scans paths under top-level entries already present in ./.config/"
+    echo "  Ignores empty repo subtrees; only managed entries with files are considered"
 }
 
 err() {
@@ -34,11 +38,11 @@ err() {
 }
 
 DRY_RUN=1
+args=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --apply)
+        -a|--apply)
             DRY_RUN=0
-            shift
             ;;
         -h|--help)
             usage
@@ -46,6 +50,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --)
             shift
+            args+=("$@")
             break
             ;;
         -*)
@@ -54,14 +59,85 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            break
+            args+=("$1")
             ;;
     esac
+    shift
 done
+
+set -- "${args[@]}"
+
+resolve_path() {
+    if command -v realpath >/dev/null 2>&1; then
+        realpath "$1"
+    else
+        readlink -f "$1"
+    fi
+}
+
+SRC_ROOT="$(resolve_path "$SRC_ROOT")"
+DST_ROOT="$(resolve_path "$DST_ROOT")"
+
+add_default_paths() {
+    local top path
+
+    for top in "${!managed_roots[@]}"; do
+        path="$SRC_ROOT/$top"
+        if [[ -e "$path" || -L "$path" ]]; then
+            paths+=("$path")
+        fi
+    done
+}
+
+has_regular_files() {
+    local path="$1"
+
+    if [[ -f "$path" ]]; then
+        return 0
+    fi
+
+    if [[ -d "$path" ]] && find "$path" -type f -print -quit | grep -q .; then
+        return 0
+    fi
+
+    return 1
+}
+
+declare -A managed_roots=()
+for managed_path in "$DST_ROOT"/*; do
+    [[ -e "$managed_path" || -L "$managed_path" ]] || continue
+    if has_regular_files "$managed_path"; then
+        managed_roots["$(basename "$managed_path")"]=1
+    fi
+done
+
+if (( ${#managed_roots[@]} == 0 )); then
+    err "no managed entries with files found under $DST_ROOT"
+    exit 1
+fi
+
+is_managed_path() {
+    local path="$1"
+    local rel top
+
+    case "$path" in
+        "$SRC_ROOT")
+            return 0
+            ;;
+        "$SRC_ROOT"/*)
+            rel="${path#$SRC_ROOT/}"
+            top="${rel%%/*}"
+            [[ -n "${managed_roots[$top]:-}" ]]
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
 paths=()
 if [[ $# -eq 0 ]]; then
-    paths+=("$SRC_ROOT")
+    add_default_paths
 else
     for path in "$@"; do
         if [[ "$path" != /* ]]; then
@@ -73,8 +149,17 @@ else
             exit 1
         fi
 
+        path="$(resolve_path "$path")"
+
         case "$path" in
-            "$SRC_ROOT"|"$SRC_ROOT"/*)
+            "$SRC_ROOT")
+                add_default_paths
+                ;;
+            "$SRC_ROOT"/*)
+                if ! is_managed_path "$path"; then
+                    err "path is not under a managed ~/.config subtree: $path"
+                    exit 1
+                fi
                 paths+=("$path")
                 ;;
             *)
@@ -100,11 +185,10 @@ while IFS= read -r -d '' src; do
         continue
     fi
 
-    mkdir -p "$(dirname "$dst")"
-
     if (( DRY_RUN )); then
         printf "${GREEN}+${RESET} %s\n" "$rel"
     else
+        mkdir -p "$(dirname "$dst")"
         cp -a "$src" "$dst"
         git -C "$DOTFILES" add -f ".config/$rel"
         printf "${GREEN}✓${RESET} %s\n" "$rel"

@@ -15,14 +15,14 @@ vim.pack.add({
   },
   {
     src = "https://github.com/nvim-telescope/telescope.nvim",
-    version = "0.1.x",
+    version = vim.version.range('*'),
   },
   {
     src = "https://github.com/sindrets/diffview.nvim",
   },
   {
     src = "https://github.com/mrcjkb/rustaceanvim",
-    version = "^5",
+    version = vim.version.range('^9'),
   },
   {
     src = "https://github.com/hrsh7th/nvim-cmp",
@@ -38,6 +38,9 @@ vim.pack.add({
   },
   {
     src = "https://github.com/stevearc/conform.nvim",
+  },
+  {
+    src = "https://github.com/stevearc/oil.nvim",
   },
 }, {
   confirm = false,

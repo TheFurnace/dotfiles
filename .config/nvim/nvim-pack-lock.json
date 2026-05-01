@@ -33,14 +33,23 @@
       "src": "https://github.com/nvim-treesitter/nvim-treesitter",
       "version": "'v0.10.0'"
     },
+    "oil.nvim": {
+      "rev": "0fcc83805ad11cf714a949c98c605ed717e0b83e",
+      "src": "https://github.com/stevearc/oil.nvim"
+    },
     "plenary.nvim": {
       "rev": "74b06c6c75e4eeb3108ec01852001636d85a932b",
       "src": "https://github.com/nvim-lua/plenary.nvim"
     },
+    "rustaceanvim": {
+      "rev": "bc391bbb8db0dbf3e3e9fe8f9f03112ecbab7463",
+      "src": "https://github.com/mrcjkb/rustaceanvim",
+      "version": "9.0.0 - 10.0.0"
+    },
     "telescope.nvim": {
       "rev": "a0bbec21143c7bc5f8bb02e0005fa0b982edc026",
       "src": "https://github.com/nvim-telescope/telescope.nvim",
-      "version": "'0.1.x'"
+      "version": ">=0.0.0"
     }
   }
 }

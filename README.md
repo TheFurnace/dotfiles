@@ -341,10 +341,10 @@ just pull-config-apply
 Recipes:
 
 - `just link-config` — runs `./setup.sh` to symlink files from this repo's `.config/` into `~/.config`
-- `just pull-config [path ...]` — dry-run by default; shows which regular files exist in `~/.config` but not yet in this repo's `.config/`
+- `just pull-config [path ...]` — dry-run by default; shows which regular files exist in managed `~/.config/<name>` subtrees but not yet in this repo's `.config/`
 - `just pull-config-apply [path ...]` — copies those new regular files into this repo's `.config/`, stages them in git, and preserves paths
 
-`pull-config` accepts absolute paths or paths relative to `~/.config/`. With no paths, it scans the entire config tree.
+`pull-config` accepts absolute paths or paths relative to `~/.config/`, but only under top-level entries that already exist in this repo's `.config/` and actually contain files in the repo. With no paths, it scans only those matching managed subtrees.
 
 ## Notes
 

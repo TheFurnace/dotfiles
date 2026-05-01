@@ -9,9 +9,9 @@ link:
     ./setup.sh
 
 # Preview new regular files from ~/.config that are not yet in this repo.
-pull +args:
+pull *args:
     ./pull-config.sh {{args}}
 
 # Copy and stage new regular files from ~/.config into this repo's .config tree.
-pull-apply +args:
+pull-apply *args:
     ./pull-config.sh --apply {{args}}

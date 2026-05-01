@@ -20,6 +20,7 @@ safe_require "user.csharp"
 safe_require "user.typescript"
 safe_require "user.python"
 safe_require "user.format"
+safe_require "user.oil"
 
 vim.api.nvim_create_user_command('SyntaxHere', function()
 	local pos = vim.api.nvim_win_get_cursor(0)
