@@ -16,18 +16,27 @@ conform.setup({
     rust = { "rustfmt" },
   },
   format_on_save = function(bufnr)
-    if vim.bo[bufnr].filetype ~= "rust" then
-      return nil
+    local filetype = vim.bo[bufnr].filetype
+
+    if filetype == "rust" then
+      if vim.fn.executable("rustfmt") ~= 1 then
+        return nil
+      end
+
+      return {
+        timeout_ms = 500,
+        lsp_format = "fallback",
+      }
     end
 
-    if vim.fn.executable("rustfmt") ~= 1 then
-      return nil
+    if filetype == "cs" then
+      return {
+        timeout_ms = 500,
+        lsp_format = "fallback",
+      }
     end
 
-    return {
-      timeout_ms = 500,
-      lsp_format = "fallback",
-    }
+    return nil
   end,
 })
 
