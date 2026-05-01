@@ -1,5 +1,20 @@
 require("nvim-treesitter.configs").setup({
-  ensure_installed = { "lua", "markdown", "markdown_inline", "bash", "python", "fish", "rust", "toml", "c_sharp" },
+  ensure_installed = {
+    "lua",
+    "markdown",
+    "markdown_inline",
+    "bash",
+    "python",
+    "fish",
+    "rust",
+    "toml",
+    "c_sharp",
+    "javascript",
+    "typescript",
+    "tsx",
+    "json",
+    "jsonc",
+  },
   ignore_install = { "" },
   sync_install = false,
   highlight = {
