@@ -20,6 +20,25 @@ vim.pack.add({
   {
     src = "https://github.com/sindrets/diffview.nvim",
   },
+  {
+    src = "https://github.com/mrcjkb/rustaceanvim",
+    version = "^5",
+  },
+  {
+    src = "https://github.com/hrsh7th/nvim-cmp",
+  },
+  {
+    src = "https://github.com/hrsh7th/cmp-nvim-lsp",
+  },
+  {
+    src = "https://github.com/hrsh7th/cmp-buffer",
+  },
+  {
+    src = "https://github.com/hrsh7th/cmp-path",
+  },
+  {
+    src = "https://github.com/stevearc/conform.nvim",
+  },
 }, {
   confirm = false,
 })
