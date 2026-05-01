@@ -17,6 +17,7 @@ safe_require "user.completion"
 safe_require "user.rust"
 safe_require "user.csharp"
 safe_require "user.typescript"
+safe_require "user.python"
 safe_require "user.format"
 
 vim.api.nvim_create_user_command('SyntaxHere', function()

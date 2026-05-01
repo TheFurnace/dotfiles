@@ -14,6 +14,7 @@ end
 conform.setup({
   formatters_by_ft = {
     rust = { "rustfmt" },
+    python = { "ruff_format", "black", stop_after_first = true },
     javascript = { "biome", "prettierd", "prettier", stop_after_first = true },
     javascriptreact = { "biome", "prettierd", "prettier", stop_after_first = true },
     typescript = { "biome", "prettierd", "prettier", stop_after_first = true },
@@ -35,7 +36,8 @@ conform.setup({
       }
     end
 
-    if filetype == "cs"
+    if filetype == "python"
+      or filetype == "cs"
       or filetype == "javascript"
       or filetype == "javascriptreact"
       or filetype == "typescript"
