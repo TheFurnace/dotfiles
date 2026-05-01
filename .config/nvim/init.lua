@@ -10,6 +10,7 @@ local function safe_require(module)
 end
 
 safe_require "user.colorscheme"
+safe_require "user.indent"
 safe_require "user.telescope"
 safe_require "user.diffview"
 safe_require "user.treesitter"
