@@ -19,6 +19,7 @@ safe_require "user.rust"
 safe_require "user.csharp"
 safe_require "user.typescript"
 safe_require "user.python"
+safe_require "user.nix"
 safe_require "user.format"
 safe_require "user.oil"
 

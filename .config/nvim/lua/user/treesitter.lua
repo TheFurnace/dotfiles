@@ -20,6 +20,7 @@ local languages = {
   "fish",
   "rust",
   "toml",
+  "nix",
   "c_sharp",
   "javascript",
   "typescript",

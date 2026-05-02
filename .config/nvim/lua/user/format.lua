@@ -14,6 +14,7 @@ conform.setup({
     typescriptreact = { "biome", "prettierd", "prettier", stop_after_first = true },
     json = { "biome", "prettierd", "prettier", stop_after_first = true },
     jsonc = { "biome", "prettierd", "prettier", stop_after_first = true },
+    nix = { "alejandra", "nixfmt", "nixpkgs_fmt", stop_after_first = true },
   },
   format_on_save = function(bufnr)
     local filetype = vim.bo[bufnr].filetype
@@ -36,7 +37,8 @@ conform.setup({
       or filetype == "typescript"
       or filetype == "typescriptreact"
       or filetype == "json"
-      or filetype == "jsonc" then
+      or filetype == "jsonc"
+      or filetype == "nix" then
       return {
         timeout_ms = 500,
         lsp_format = "fallback",
