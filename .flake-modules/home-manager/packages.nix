@@ -19,6 +19,7 @@ in
       powershell
       zoxide
       gh
+      tree-sitter
     ];
   };
 }
