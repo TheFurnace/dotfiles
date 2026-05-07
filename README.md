@@ -30,13 +30,12 @@ Config files are sourced directly from `.config/`:
 
 | Program | Source directory |
 |---|---|
-| Fish | `.config/fish/` |
 | Git | `.config/git/` |
 | Kitty | `.config/kitty/` |
 | Neovim | `.config/nvim/` |
 | oh-my-posh | `.config/oh-my-posh/` |
 
-The fish prompt is wired automatically through `fish/conf.d/oh-my-posh.fish`, so after activation the prompt is ready to go.
+Fish shell is configured via `programs.fish` (Home Manager's built-in module), so its shell init, functions, and tool hooks are all declared in Nix rather than stored under `.config/fish/`. The oh-my-posh prompt and nix-your-shell hook are wired automatically through `programs.fish.interactiveShellInit`.
 
 ---
 
@@ -235,7 +234,7 @@ git add -A
 home-manager switch --flake .#alice
 ```
 
-When fish is your login shell in standalone Home Manager mode, this module also installs `~/.config/fish/conf.d/00-home-manager-path.fish` so Home Manager and Nix profile `bin` directories are added to `PATH` in new fish sessions. The snippet checks for directory existence, so it works across different standalone vs NixOS profile layouts.
+When fish is your login shell in standalone Home Manager mode, `programs.fish` ensures the Home Manager profile is on `PATH` automatically.
 
 ### One-time login shell step on non-NixOS
 
@@ -350,6 +349,5 @@ Recipes:
 
 ## Notes
 
-- Do not enable `programs.fish` separately in the Home Manager user config that imports `homeManagerModules.default`. This repo owns `fish/config.fish` directly through `xdg.configFile`.
 - Files under `.config/` are discovered recursively at evaluation time, so new config subdirectories are picked up automatically on the next rebuild.
 - Mutable mode updates existing files immediately, but adding or removing files still requires a rebuild.
