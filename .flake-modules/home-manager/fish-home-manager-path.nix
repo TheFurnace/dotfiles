@@ -6,6 +6,10 @@ in
   config = lib.mkIf cfg.enable {
     # Keep Home Manager profile bins available in standalone fish login shells
     # without enabling programs.fish.
+    #
+    # The path list intentionally covers common user/system Nix profile layouts
+    # across standalone Home Manager and NixOS; nonexistent directories are
+    # skipped at runtime.
     xdg.configFile."fish/conf.d/00-home-manager-path.fish" = {
       force = true;
       text = ''

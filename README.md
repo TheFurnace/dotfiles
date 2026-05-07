@@ -235,7 +235,7 @@ git add -A
 home-manager switch --flake .#alice
 ```
 
-When fish is your login shell in standalone Home Manager mode, this module also installs `~/.config/fish/conf.d/00-home-manager-path.fish` so Home Manager and Nix profile `bin` directories are added to `PATH` in new fish sessions.
+When fish is your login shell in standalone Home Manager mode, this module also installs `~/.config/fish/conf.d/00-home-manager-path.fish` so Home Manager and Nix profile `bin` directories are added to `PATH` in new fish sessions. The snippet checks for directory existence, so it works across different standalone vs NixOS profile layouts.
 
 ### One-time login shell step on non-NixOS
 
