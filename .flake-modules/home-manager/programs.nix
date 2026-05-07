@@ -99,6 +99,11 @@ in
                 return
             end
 
+            # Note: the previous symlink-detection fallback (for a normal repo
+            # managed via mutable xdg.configFile symlinks) cannot work here because
+            # programs.fish.functions embeds the body in Nix; the function file no
+            # longer lives as a symlink into the dotfiles checkout. Use bare-repo
+            # mode instead.
             echo "dotfiles-git: could not locate dotfiles repository" >&2
             return 1
           '';
