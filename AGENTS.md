@@ -24,10 +24,10 @@ setup.sh             # bootstrap script for first-time setup on a new machine
 
 | Concern | Location |
 |---|---|
-| Package list | `flake.nix` — `home.packages` |
-| Program options (neovim, direnv, fish, …) | `flake.nix` — `programs.*` |
+| Package list | `.flake-modules/home-manager/packages.nix` — `home.packages` |
+| Program options (neovim, direnv, fish, …) | Home Manager modules under `.flake-modules/home-manager/` — `programs.*` |
 | Config file content (non-fish) | `.config/<program>/` |
-| Fish shell init, functions, hooks | `programs.fish` in `.flake-modules/home-manager/fish/*.nix` |
+| Fish shell init, functions, hooks | Home Manager modules — primarily `.flake-modules/home-manager/fish/*.nix`, with tool-specific fish integrations also declared in related modules such as `.flake-modules/home-manager/programs.nix` |
 | Machine identity (`username`, `homeDirectory`, `stateVersion`) | Consuming system config |
 | Machine-specific or experimental config | Consuming system config |
 
