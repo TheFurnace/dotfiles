@@ -9,15 +9,12 @@
       "locked": {
         "lastModified": 1775900011,
         "narHash": "sha256-QUGu6CJYFQ5AWVV0n3/FsJyV+1/gj7HSDx68/SX9pwM=",
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "rev": "b0569dc6ec1e6e7fefd8f6897184e4c191cd768e",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://codeload.github.com/nix-community/home-manager/tar.gz/b0569dc6ec1e6e7fefd8f6897184e4c191cd768e"
       },
       "original": {
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://codeload.github.com/nix-community/home-manager/tar.gz/b0569dc6ec1e6e7fefd8f6897184e4c191cd768e"
       }
     },
     "nix-index-database": {
@@ -29,15 +26,12 @@
       "locked": {
         "lastModified": 1775365369,
         "narHash": "sha256-DgH5mveLoau20CuTnaU5RXZWgFQWn56onQ4Du2CqYoI=",
-        "owner": "nix-community",
-        "repo": "nix-index-database",
-        "rev": "cef5cf82671e749ac87d69aadecbb75967e6f6c3",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://codeload.github.com/nix-community/nix-index-database/tar.gz/cef5cf82671e749ac87d69aadecbb75967e6f6c3"
       },
       "original": {
-        "owner": "nix-community",
-        "repo": "nix-index-database",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://codeload.github.com/nix-community/nix-index-database/tar.gz/cef5cf82671e749ac87d69aadecbb75967e6f6c3"
       }
     },
     "nixpkgs": {

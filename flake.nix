@@ -5,12 +5,12 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "https://codeload.github.com/nix-community/home-manager/tar.gz/b0569dc6ec1e6e7fefd8f6897184e4c191cd768e";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nix-index-database = {
-      url = "github:nix-community/nix-index-database";
+      url = "https://codeload.github.com/nix-community/nix-index-database/tar.gz/cef5cf82671e749ac87d69aadecbb75967e6f6c3";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
