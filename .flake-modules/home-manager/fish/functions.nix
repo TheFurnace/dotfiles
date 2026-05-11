@@ -12,7 +12,7 @@ in
           if test (count $argv) -gt 0
               set search_path $argv[1]
           end
-          set -l targets (find -- "$search_path" -empty -type f ! -name "*.py" ! -name "*.lock" -print0 2>/dev/null | string split0)
+          set -l targets (find "$search_path" -empty -type f ! -name "*.py" ! -name "*.lock" -print0 2>/dev/null | string split0)
 
           if test (count $targets) -eq 0
               echo "Nothing to clean."
@@ -27,7 +27,7 @@ in
           read --prompt-str "Remove these files? [y/N] " confirm
           if test "$confirm" = y -o "$confirm" = Y
               for f in $targets
-                  rm -f -- $f
+                  rm -f -- "$f"
               end
               echo "Removed "(count $targets)" file(s)."
           else
