@@ -12,7 +12,7 @@ in
           if test (count $argv) -gt 0
               set search_path $argv[1]
           end
-          set -l targets (find $search_path -empty -type f ! -name "*.py" ! -name "*.lock" -print0 2>/dev/null | string split0)
+          set -l targets (find -- "$search_path" -empty -type f ! -name "*.py" ! -name "*.lock" -print0 2>/dev/null | string split0)
 
           if test (count $targets) -eq 0
               echo "Nothing to clean."
@@ -47,7 +47,7 @@ in
 
       dotfiles-git = {
         wraps = "git";
-        description = "Run git against the dotfiles bare repo";
+        description = "Run git against the dotfiles repository";
         body = ''
           # Bare repo mode: ~/.dotfiles/ is a bare git repo; work-tree is $HOME
           if test -f $HOME/.dotfiles/HEAD
