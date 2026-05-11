@@ -27,7 +27,7 @@ setup.sh             # bootstrap script for first-time setup on a new machine
 | Package list | `flake.nix` — `home.packages` |
 | Program options (neovim, direnv, fish, …) | `flake.nix` — `programs.*` |
 | Config file content (non-fish) | `.config/<program>/` |
-| Fish shell init, functions, hooks | `programs.fish` in `.flake-modules/home-manager/programs.nix` |
+| Fish shell init, functions, hooks | `programs.fish` in `.flake-modules/home-manager/fish/*.nix` |
 | Machine identity (`username`, `homeDirectory`, `stateVersion`) | Consuming system config |
 | Machine-specific or experimental config | Consuming system config |
 
@@ -47,4 +47,3 @@ setup.sh             # bootstrap script for first-time setup on a new machine
 
 - When changing Nix or Home Manager config: run `nix flake check` to validate before committing.
 - After any stopping point, commit with a descriptive message.
-
