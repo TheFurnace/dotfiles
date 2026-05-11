@@ -1,5 +1,5 @@
 { self }:
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 let
   cfg = config.dotfiles;
 
@@ -38,37 +38,10 @@ in
     # Treat .config/ in this repo as the canonical source of truth for config
     # file contents. New files are discovered on the next evaluation.
     xdg.configFile =
-      configFilesFrom "fish" "fish/" //
       configFilesFrom "git" "git/" //
       configFilesFrom "kitty" "kitty/" //
       configFilesFrom "nvim" "nvim/" //
       configFilesFrom "oh-my-posh" "oh-my-posh/" //
-      configFilesFrom "powershell" "powershell/" //
-      {
-        # These generated snippets wire package-provided shell hooks into fish
-        # without handing ownership of fish/config.fish to Home Manager's
-        # programs.fish module.
-        "fish/conf.d/direnv.fish" = {
-          force = true;
-          text = ''
-            ${pkgs.direnv}/bin/direnv hook fish | source
-            ${pkgs.direnv}/bin/direnv export fish | source
-          '';
-        };
-
-        "fish/conf.d/nix-your-shell.fish" = {
-          force = true;
-          text = ''
-            ${pkgs.nix-your-shell}/bin/nix-your-shell fish | source
-          '';
-        };
-
-        "fish/conf.d/zoxide.fish" = {
-          force = true;
-          text = ''
-            ${pkgs.zoxide}/bin/zoxide init fish | source
-          '';
-        };
-      };
+      configFilesFrom "powershell" "powershell/";
   };
 }
