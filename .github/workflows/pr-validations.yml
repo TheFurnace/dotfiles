@@ -13,7 +13,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        uses: nixbuild/nix-quick-install-action@v34
       - name: Run flake check and dotfiles validations
         run: |
           nix flake check
