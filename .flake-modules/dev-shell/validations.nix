@@ -45,7 +45,7 @@ let
     name = "validate-kitty-config";
     runtimeInputs = [ pkgs.kitty pkgs.python3 ];
     text = ''
-      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
       kitty_bin="$(readlink -f "$(command -v kitty)")"
       kitty_lib="$(dirname "$kitty_bin")/../lib/kitty"
 
@@ -73,7 +73,7 @@ let
     name = "validate-pwsh-config";
     runtimeInputs = [ pkgs.gnugrep pkgs.powershell ];
     text = ''
-      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
       profile="$DOTFILES_REPO/.config/powershell/Microsoft.PowerShell_profile.ps1"
 
       test -f "$profile"
@@ -87,7 +87,7 @@ let
     name = "validate-setup-script";
     runtimeInputs = [ pkgs.bash pkgs.coreutils pkgs.findutils ];
     text = ''
-      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
       setup_script="$DOTFILES_REPO/setup.sh"
       expected_link_target="$DOTFILES_REPO/.config/git/config"
 
@@ -116,7 +116,7 @@ let
     name = "validate-install-script";
     runtimeInputs = [ pkgs.bash pkgs.gnugrep ];
     text = ''
-      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
       install_script="$DOTFILES_REPO/install.sh"
 
       test -x "$install_script"

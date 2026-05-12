@@ -23,7 +23,7 @@ run_check() {
 
 run_check "flake check" nix flake check
 if nix develop .#default --command bash -lc '
-  set -uo pipefail
+  set -euo pipefail
   fail_count=0
 
   run_validation() {
