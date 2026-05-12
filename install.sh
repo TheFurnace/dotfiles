@@ -3,6 +3,7 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
+default_mutable_checkout_subdir="dotfiles"
 
 resolve_dotfiles_url() {
     local script_path script_dir
@@ -14,11 +15,6 @@ resolve_dotfiles_url() {
             printf 'path:%s\n' "$script_dir"
             return
         fi
-    fi
-
-    if [ -f "./flake.nix" ]; then
-        printf 'path:%s\n' "$(pwd)"
-        return
     fi
 
     printf 'github:TheFurnace/dotfiles\n'
@@ -87,6 +83,24 @@ escape_sed_replacement() {
     printf '%s' "$value"
 }
 
+escape_for_nix_sed() {
+    escape_sed_replacement "$(nix_escape "$1")"
+}
+
+validate_local_checkout_path() {
+    local checkout_path="$1"
+
+    if [ ! -d "$checkout_path" ]; then
+        echo "Mutable checkout path does not exist: $checkout_path" >&2
+        exit 1
+    fi
+
+    if [ ! -f "$checkout_path/flake.nix" ] || [ ! -f "$checkout_path/install.sh" ]; then
+        echo "Mutable checkout path must contain flake.nix and install.sh from this dotfiles repo: $checkout_path" >&2
+        exit 1
+    fi
+}
+
 default_username="${USER:-$(id -un)}"
 default_home="${HOME:-/home/$default_username}"
 default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
@@ -118,9 +132,10 @@ if [ "$mutable" = "true" ]; then
     if [[ "$dotfiles_url" == path:* ]]; then
         local_checkout_path="${dotfiles_url#path:}"
     else
-        local_checkout_path="$(pwd)"
+        local_checkout_path="$default_home/$default_mutable_checkout_subdir"
     fi
     local_path="$(prompt_with_default "Mutable checkout path" "$local_checkout_path")"
+    validate_local_checkout_path "$local_path"
 fi
 
 temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX")"
@@ -165,13 +180,13 @@ cat >"$temp_dir/flake.nix" <<'EOF'
 }
 EOF
 
-dotfiles_url_escaped="$(escape_sed_replacement "$dotfiles_url")"
-system_escaped="$(escape_sed_replacement "$system")"
-username_escaped="$(escape_sed_replacement "$username")"
-home_directory_escaped="$(escape_sed_replacement "$home_directory")"
-state_version_escaped="$(escape_sed_replacement "$state_version")"
+dotfiles_url_escaped="$(escape_for_nix_sed "$dotfiles_url")"
+system_escaped="$(escape_for_nix_sed "$system")"
+username_escaped="$(escape_for_nix_sed "$username")"
+home_directory_escaped="$(escape_for_nix_sed "$home_directory")"
+state_version_escaped="$(escape_for_nix_sed "$state_version")"
 mutable_literal_escaped="$(escape_sed_replacement "$mutable_literal")"
-local_path_escaped="$(escape_sed_replacement "$local_path")"
+local_path_escaped="$(escape_for_nix_sed "$local_path")"
 
 sed \
     -e "s|__DOTFILES_URL__|$dotfiles_url_escaped|g" \
@@ -197,7 +212,7 @@ if [ "$mutable" = "true" ]; then
 fi
 echo
 
-echo "Running nix flake check for this repository..."
+echo "Running nix flake check for: $dotfiles_url"
 "${nix_cmd[@]}" flake check "$dotfiles_url"
 
 echo "Building the generated Home Manager activation package..."
