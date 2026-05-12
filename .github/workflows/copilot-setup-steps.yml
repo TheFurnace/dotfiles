@@ -15,4 +15,4 @@ jobs:
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v34
       - name: Initialize dev shell
-        run: nix develop .#default --command bash -lc 'command -v fish nvim oh-my-posh kitty pwsh validate-dotfiles-config'
+        run: nix develop .#default --command bash -lc 'command -v fish nvim oh-my-posh kitty pwsh validate-setup-script validate-install-script validate-dotfiles-config'

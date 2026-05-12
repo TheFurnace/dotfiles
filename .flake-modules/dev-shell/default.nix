@@ -34,7 +34,7 @@ in
       ln -snf "$DOTFILES_REPO/.config" "$HOME/.config"
 
       echo "dotfiles dev shell ready"
-      echo "Validation commands: validate-fish-config, validate-neovim-config, validate-oh-my-posh-config, validate-kitty-config, validate-pwsh-config, validate-dotfiles-config"
+      echo "Validation commands: validate-fish-config, validate-neovim-config, validate-oh-my-posh-config, validate-kitty-config, validate-pwsh-config, validate-setup-script, validate-install-script, validate-dotfiles-config"
     '';
   };
 }

@@ -83,14 +83,61 @@ let
     '';
   };
 
+  validateSetupScript = pkgs.writeShellApplication {
+    name = "validate-setup-script";
+    runtimeInputs = [ pkgs.bash pkgs.coreutils pkgs.findutils ];
+    text = ''
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      setup_script="$DOTFILES_REPO/setup.sh"
+      expected_link_target="$DOTFILES_REPO/.config/git/config"
+
+      test -x "$setup_script"
+      test -f "$expected_link_target"
+      bash -n "$setup_script"
+
+      test_root="$(mktemp -d "''${TMPDIR:-/tmp}/dotfiles-setup-validate.XXXXXX")"
+      cleanup() {
+        rm -rf "$test_root"
+      }
+      trap cleanup EXIT
+
+      export HOME="$test_root/home"
+      export XDG_CONFIG_HOME="$test_root/config"
+      mkdir -p "$HOME" "$XDG_CONFIG_HOME"
+
+      "$setup_script" >/dev/null
+
+      test -L "$XDG_CONFIG_HOME/git/config"
+      [ "$(readlink "$XDG_CONFIG_HOME/git/config")" = "$expected_link_target" ]
+    '';
+  };
+
+  validateInstallScript = pkgs.writeShellApplication {
+    name = "validate-install-script";
+    runtimeInputs = [ pkgs.bash pkgs.gnugrep ];
+    text = ''
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      install_script="$DOTFILES_REPO/install.sh"
+
+      test -x "$install_script"
+      bash -n "$install_script"
+
+      grep -q 'flake check' "$install_script"
+      grep -q 'build --no-link "\$temp_dir#homeConfigurations.installer.activationPackage"' "$install_script"
+      grep -q 'Activate this Home Manager configuration now' "$install_script"
+    '';
+  };
+
   validateDotfilesConfig = pkgs.writeShellApplication {
     name = "validate-dotfiles-config";
     runtimeInputs = [
       validateFishConfig
+      validateInstallScript
       validateNeovimConfig
       validateOhMyPoshConfig
       validateKittyConfig
       validatePwshConfig
+      validateSetupScript
     ];
     text = ''
       validate-fish-config
@@ -98,6 +145,8 @@ let
       validate-oh-my-posh-config
       validate-kitty-config
       validate-pwsh-config
+      validate-setup-script
+      validate-install-script
     '';
   };
 in
@@ -105,9 +154,11 @@ in
   validationPackages = [
     validateDotfilesConfig
     validateFishConfig
+    validateInstallScript
     validateKittyConfig
     validateNeovimConfig
     validateOhMyPoshConfig
     validatePwshConfig
+    validateSetupScript
   ];
 }
