@@ -6,7 +6,9 @@ if (Test-Path $ompConfig) {
 
 zoxide init powershell | Invoke-Expression
 
-Import-Module git-completion
+if (Get-Module -ListAvailable git-completion) {
+    Import-Module git-completion
+}
 
 if (Get-Command Set-PSReadLineKeyHandler -ErrorAction SilentlyContinue) {
     Set-PSReadLineKeyHandler -Chord Tab -Function MenuComplete
