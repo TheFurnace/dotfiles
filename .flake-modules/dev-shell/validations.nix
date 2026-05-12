@@ -123,7 +123,7 @@ let
       bash -n "$install_script"
 
       grep -q 'flake check' "$install_script"
-      grep -q 'build --no-link "\$temp_dir#homeConfigurations.installer.activationPackage"' "$install_script"
+      grep -Fq "build --no-link \"\$temp_dir#homeConfigurations.installer.activationPackage\"" "$install_script"
       grep -q 'Activate this Home Manager configuration now' "$install_script"
     '';
   };
