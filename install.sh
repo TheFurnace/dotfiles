@@ -3,7 +3,19 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+dotfiles_repo="github:TheFurnace/dotfiles"
+dotfiles_repo_url="https://github.com/TheFurnace/dotfiles.git"
+
+# Detect whether the script is running from a local checkout or being piped
+# directly from the internet (e.g. `curl -fsSL <url> | bash`).  When piped,
+# BASH_SOURCE[0] is empty or "-", so there is no local repo to reference.
+if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" != "-" ]]; then
+    local_mode=true
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    local_mode=false
+    repo_root=""
+fi
 
 nix_escape() {
     local value="$1"
@@ -65,8 +77,13 @@ default_home="${HOME:-/home/$default_username}"
 default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
 default_state_version="25.11"
 
-echo "Installing standalone Home Manager config from:"
-echo "  $repo_root"
+if [ "$local_mode" = "true" ]; then
+    echo "Installing standalone Home Manager config from:"
+    echo "  $repo_root"
+else
+    echo "Installing standalone Home Manager config from:"
+    echo "  $dotfiles_repo"
+fi
 echo
 
 username="$(prompt_with_default "Username" "$default_username")"
@@ -86,7 +103,12 @@ case "$mutable" in
 esac
 
 if [ "$mutable" = "true" ]; then
-    local_path="$(prompt_with_default "Mutable checkout path" "$repo_root")"
+    if [ "$local_mode" = "true" ]; then
+        default_local_path="$repo_root"
+    else
+        default_local_path="$HOME/dotfiles"
+    fi
+    local_path="$(prompt_with_default "Mutable checkout path" "$default_local_path")"
 fi
 
 temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX")"
@@ -95,12 +117,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [ "$local_mode" = "true" ]; then
+    dotfiles_url="path:$(nix_escape "$repo_root")"
+else
+    dotfiles_url="$dotfiles_repo"
+fi
+
 cat >"$temp_dir/flake.nix" <<EOF
 {
   description = "Temporary installer for TheFurnace/dotfiles";
 
   inputs = {
-    dotfiles.url = "path:$(nix_escape "$repo_root")";
+    dotfiles.url = "$dotfiles_url";
     nixpkgs.follows = "dotfiles/nixpkgs";
     home-manager.follows = "dotfiles/home-manager";
   };
@@ -143,8 +171,10 @@ if [ "$mutable" = "true" ]; then
 fi
 echo
 
-echo "Running nix flake check for this repository..."
-"${nix_cmd[@]}" flake check "$repo_root"
+if [ "$local_mode" = "true" ]; then
+    echo "Running nix flake check for this repository..."
+    "${nix_cmd[@]}" flake check "$repo_root"
+fi
 
 echo "Building the generated Home Manager activation package..."
 "${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
@@ -152,6 +182,19 @@ echo "Building the generated Home Manager activation package..."
 if [ "$(prompt_yes_no "Activate this Home Manager configuration now" "false")" != "true" ]; then
     echo "Skipping activation."
     exit 0
+fi
+
+# When mutable mode is enabled and we are not running from a local checkout,
+# clone the repo to the requested path before activating so Home Manager can
+# create live symlinks into it.
+if [ "$mutable" = "true" ] && [ "$local_mode" = "false" ]; then
+    if [ -d "$local_path/.git" ]; then
+        echo "Existing git repo found at $local_path — skipping clone."
+    else
+        echo "Cloning TheFurnace/dotfiles into $local_path ..."
+        "${nix_cmd[@]}" shell "$temp_dir#git-cli" \
+            -c git clone "$dotfiles_repo_url" "$local_path"
+    fi
 fi
 
 "${nix_cmd[@]}" shell \
