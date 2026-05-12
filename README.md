@@ -357,6 +357,7 @@ just pull-config-apply
 
 Recipes:
 
+- `just install` — runs `./install.sh` to build and optionally activate a standalone Home Manager config from this checkout
 - `just link-config` — runs `./setup.sh` to symlink files from this repo's `.config/` into `~/.config`
 - `just pull-config [path ...]` — dry-run by default; shows which regular files exist in managed `~/.config/<name>` subtrees but not yet in this repo's `.config/`
 - `just pull-config-apply [path ...]` — copies those new regular files into this repo's `.config/`, stages them in git, and preserves paths
