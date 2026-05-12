@@ -62,7 +62,7 @@ You can wire the NixOS module manually:
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     dotfiles = {
-      url = "github:your-user/dotfiles";
+      url = "github:TheFurnace/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -74,14 +74,14 @@ You can wire the NixOS module manually:
         ./configuration.nix
         dotfiles.nixosModules.default
         {
-          users.users.alice = {
+          users.users.ferndq = {
             isNormalUser = true;
             extraGroups = [ "wheel" ];
           };
 
           dotfiles = {
             enable = true;
-            username = "alice";
+            username = "ferndq";
             stateVersion = "25.11";
           };
         }
@@ -99,7 +99,7 @@ Or use the helper this flake exports:
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     dotfiles = {
-      url = "github:your-user/dotfiles";
+      url = "github:TheFurnace/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -107,7 +107,7 @@ Or use the helper this flake exports:
   outputs = { dotfiles, ... }: {
     nixosConfigurations.my-machine = dotfiles.lib.mkNixosConfiguration {
       hostname = "my-machine";
-      username = "alice";
+      username = "ferndq";
       stateVersion = "25.11";
       extraModules = [ ./configuration.nix ];
     };
@@ -130,11 +130,11 @@ For live editing from a local checkout:
 ```nix
 dotfiles = {
   enable = true;
-  username = "alice";
+  username = "ferndq";
   stateVersion = "25.11";
 
   mutable = true;
-  localPath = "/home/alice/repos/dotfiles";
+  localPath = "/home/ferndq/repos/dotfiles";
 };
 ```
 
@@ -170,7 +170,7 @@ You can still wire the module manually:
     };
 
     dotfiles = {
-      url = "github:your-user/dotfiles";
+      url = "github:TheFurnace/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -180,15 +180,15 @@ You can still wire the module manually:
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
     in {
-      homeConfigurations.alice = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations.ferndq = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [
           dotfiles.homeManagerModules.default
           {
             dotfiles = {
               enable = true;
-              username = "alice";
-              homeDirectory = "/home/alice";
+              username = "ferndq";
+              homeDirectory = "/home/ferndq";
             };
 
             home.stateVersion = "25.11";
@@ -212,15 +212,15 @@ Or, more simply, use the helper this flake exports:
     };
 
     dotfiles = {
-      url = "github:your-user/dotfiles";
+      url = "github:TheFurnace/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
   outputs = { self, dotfiles, ... }: {
-    homeConfigurations.alice = dotfiles.lib.mkHomeConfiguration {
-      username = "alice";
-      homeDirectory = "/home/alice";
+    homeConfigurations.ferndq = dotfiles.lib.mkHomeConfiguration {
+      username = "ferndq";
+      homeDirectory = "/home/ferndq";
       stateVersion = "25.11";
     };
   };
@@ -231,7 +231,7 @@ Apply it with:
 
 ```bash
 git add -A
-home-manager switch --flake .#alice
+home-manager switch --flake .#ferndq
 ```
 
 When fish is your login shell in standalone Home Manager mode, `programs.fish` ensures the Home Manager profile is on `PATH` automatically.
@@ -262,8 +262,8 @@ Treat that built-in output as an example. For real usage, standalone consumption
 
 ```nix
 dotfiles.lib.mkHomeConfiguration {
-  username = "alice";
-  homeDirectory = "/home/alice";
+  username = "ferndq";
+  homeDirectory = "/home/ferndq";
   stateVersion = "25.11";
 }
 ```
