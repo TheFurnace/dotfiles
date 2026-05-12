@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+# Run repository flake/unit validations with explicit PASS/FAIL output per check.
 
-set -uo pipefail
+set -euo pipefail
 
 pass_count=0
 fail_count=0

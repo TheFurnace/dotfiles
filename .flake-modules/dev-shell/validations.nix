@@ -21,7 +21,7 @@ let
     name = "validate-neovim-config";
     runtimeInputs = [ pkgs.findutils pkgs.lua pkgs.neovim ];
     text = ''
-      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
 
       nvim_config_dir="$DOTFILES_REPO/.config/nvim"
       luac -p "$nvim_config_dir/init.lua"
@@ -36,7 +36,7 @@ let
     name = "validate-oh-my-posh-config";
     runtimeInputs = [ pkgs.oh-my-posh ];
     text = ''
-      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+      : "''${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
       oh-my-posh print primary --config "$DOTFILES_REPO/.config/oh-my-posh/themes/lambda.omp.json" --shell universal >/dev/null
     '';
   };
