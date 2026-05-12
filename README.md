@@ -401,6 +401,8 @@ Available validation commands inside the shell:
 - `validate-oh-my-posh-config`
 - `validate-kitty-config`
 - `validate-pwsh-config`
+- `validate-setup-script`
+- `validate-install-script`
 - `validate-dotfiles-config`
 
 ## Notes

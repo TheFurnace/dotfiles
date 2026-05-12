@@ -14,7 +14,5 @@ jobs:
         uses: actions/checkout@v6
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v34
-      - name: Run flake check and dotfiles validations
-        run: |
-          nix flake check
-          nix develop .#default --command validate-dotfiles-config
+      - name: Run unit validations
+        run: ./.github/scripts/run-unit-validations.sh
