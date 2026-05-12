@@ -3,6 +3,7 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
+default_mutable_checkout_subdir="dotfiles"
 
 resolve_dotfiles_url() {
     local script_path script_dir
@@ -82,6 +83,10 @@ escape_sed_replacement() {
     printf '%s' "$value"
 }
 
+escape_for_nix_sed() {
+    escape_sed_replacement "$(nix_escape "$1")"
+}
+
 validate_local_checkout_path() {
     local checkout_path="$1"
 
@@ -91,7 +96,7 @@ validate_local_checkout_path() {
     fi
 
     if [ ! -f "$checkout_path/flake.nix" ] || [ ! -f "$checkout_path/install.sh" ]; then
-        echo "Mutable checkout path must point to a dotfiles checkout containing flake.nix and install.sh: $checkout_path" >&2
+        echo "Mutable checkout path must contain flake.nix and install.sh from this dotfiles repo: $checkout_path" >&2
         exit 1
     fi
 }
@@ -127,7 +132,7 @@ if [ "$mutable" = "true" ]; then
     if [[ "$dotfiles_url" == path:* ]]; then
         local_checkout_path="${dotfiles_url#path:}"
     else
-        local_checkout_path="$default_home/dotfiles"
+        local_checkout_path="$default_home/$default_mutable_checkout_subdir"
     fi
     local_path="$(prompt_with_default "Mutable checkout path" "$local_checkout_path")"
     validate_local_checkout_path "$local_path"
@@ -175,13 +180,13 @@ cat >"$temp_dir/flake.nix" <<'EOF'
 }
 EOF
 
-dotfiles_url_escaped="$(escape_sed_replacement "$(nix_escape "$dotfiles_url")")"
-system_escaped="$(escape_sed_replacement "$(nix_escape "$system")")"
-username_escaped="$(escape_sed_replacement "$(nix_escape "$username")")"
-home_directory_escaped="$(escape_sed_replacement "$(nix_escape "$home_directory")")"
-state_version_escaped="$(escape_sed_replacement "$(nix_escape "$state_version")")"
+dotfiles_url_escaped="$(escape_for_nix_sed "$dotfiles_url")"
+system_escaped="$(escape_for_nix_sed "$system")"
+username_escaped="$(escape_for_nix_sed "$username")"
+home_directory_escaped="$(escape_for_nix_sed "$home_directory")"
+state_version_escaped="$(escape_for_nix_sed "$state_version")"
 mutable_literal_escaped="$(escape_sed_replacement "$mutable_literal")"
-local_path_escaped="$(escape_sed_replacement "$(nix_escape "$local_path")")"
+local_path_escaped="$(escape_for_nix_sed "$local_path")"
 
 sed \
     -e "s|__DOTFILES_URL__|$dotfiles_url_escaped|g" \
