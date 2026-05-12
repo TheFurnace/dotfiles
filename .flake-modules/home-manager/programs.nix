@@ -1,7 +1,8 @@
 { nix-index-database }:
-{ config, lib, ... }:
+{ config, lib, osConfig ? null, ... }:
 let
   cfg = config.dotfiles;
+  isStandaloneHomeManager = osConfig == null;
 in
 {
   # nix-index-database replaces local nix-index generation, which is heavier
@@ -9,6 +10,10 @@ in
   imports = [ nix-index-database.homeModules.nix-index ];
 
   config = lib.mkIf cfg.enable {
+    programs.home-manager = lib.mkIf isStandaloneHomeManager {
+      enable = true;
+    };
+
     programs.nix-index-database.comma.enable = true;
 
     programs.neovim = {

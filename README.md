@@ -148,7 +148,7 @@ If your NixOS user has a nonstandard home directory, also set `dotfiles.homeDire
 
 On non-NixOS, use `dotfiles.homeManagerModules.default`.
 
-This installs the same user environment and wires fish + oh-my-posh automatically, but there is one platform limitation to be aware of:
+This installs the same user environment, enables `programs.home-manager`, and wires fish + oh-my-posh automatically, but there is one platform limitation to be aware of:
 
 - Home Manager can install and configure fish
 - Home Manager cannot reliably change the system login shell on non-NixOS by itself
