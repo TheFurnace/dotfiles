@@ -9,11 +9,6 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 15
-    env:
-      GIT_CONFIG_COUNT: 1
-      GIT_CONFIG_KEY_0: core.progress
-      GIT_CONFIG_VALUE_0: "false"
-      GIT_TERMINAL_PROMPT: "0"
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -22,4 +17,4 @@ jobs:
       - name: Configure Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Initialize dev shell
-        run: nix --log-format raw develop .#default --command bash -lc 'command -v fish nvim oh-my-posh kitty pwsh validate-dotfiles-config'
+        run: nix --quiet develop .#default --command bash -lc 'command -v fish nvim oh-my-posh kitty pwsh validate-dotfiles-config'

@@ -9,11 +9,6 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 30
-    env:
-      GIT_CONFIG_COUNT: 1
-      GIT_CONFIG_KEY_0: core.progress
-      GIT_CONFIG_VALUE_0: "false"
-      GIT_TERMINAL_PROMPT: "0"
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -23,5 +18,5 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Run flake check and dotfiles validations
         run: |
-          nix --log-format raw flake check
-          nix --log-format raw develop .#default --command validate-dotfiles-config
+          nix --quiet flake check
+          nix --quiet develop .#default --command validate-dotfiles-config
