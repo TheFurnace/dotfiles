@@ -2,6 +2,26 @@
 
 Plug-and-play dotfiles for Home Manager and NixOS.
 
+## Table of contents
+
+- [What the module configures](#what-the-module-configures)
+- [NixOS: full plug-and-play setup](#nixos-full-plug-and-play-setup)
+  - [Example](#example)
+  - [Mutable mode on NixOS](#mutable-mode-on-nixos)
+- [Non-NixOS or standalone Home Manager](#non-nixos-or-standalone-home-manager)
+  - [Quick install from this repository](#quick-install-from-this-repository)
+  - [Example](#example-1)
+  - [One-time login shell step on non-NixOS](#one-time-login-shell-step-on-non-nixos)
+- [Standalone configs bundled in this repo](#standalone-configs-bundled-in-this-repo)
+- [NixOS helper options: `lib.mkNixosConfiguration`](#nixos-helper-options-libmknixosconfiguration)
+- [Module options](#module-options)
+  - [Home Manager module: `homeManagerModules.default`](#home-manager-module-homemanagermodulesdefault)
+  - [NixOS module: `nixosModules.default`](#nixos-module-nixosmodulesdefault)
+- [Updating this flake when used as an input](#updating-this-flake-when-used-as-an-input)
+- [Helper scripts](#helper-scripts)
+- [Development shell](#development-shell)
+- [Notes](#notes)
+
 This flake now exposes four useful entry points:
 
 - `homeManagerModules.default` — use this in standalone Home Manager or on non-NixOS systems
