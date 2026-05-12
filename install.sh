@@ -75,6 +75,11 @@ state_version="$(prompt_with_default "Home Manager state version" "$default_stat
 system="$(prompt_with_default "System" "$default_system")"
 mutable="$(prompt_yes_no "Enable mutable mode" "false")"
 local_path=""
+mutable_literal="false"
+
+if [ "$mutable" = "true" ]; then
+    mutable_literal="true"
+fi
 
 if [ "$mutable" = "true" ]; then
     local_path="$(prompt_with_default "Mutable checkout path" "$repo_root")"
@@ -110,7 +115,7 @@ cat >"$temp_dir/flake.nix" <<EOF
         username = "$(nix_escape "$username")";
         homeDirectory = "$(nix_escape "$home_directory")";
         stateVersion = "$(nix_escape "$state_version")";
-        mutable = $mutable;
+        mutable = $mutable_literal;
         localPath = "$(nix_escape "$local_path")";
       };
 
