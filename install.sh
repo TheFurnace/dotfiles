@@ -33,7 +33,7 @@ prompt_with_default() {
     local default_value="$2"
     local value
 
-    read -r -p "$label [$default_value]: " value
+    read -r -p "$label [$default_value]: " value </dev/tty
     if [ -z "$value" ]; then
         value="$default_value"
     fi
@@ -54,7 +54,7 @@ prompt_yes_no() {
     fi
 
     while true; do
-        read -r -p "$label [$prompt]: " reply
+        read -r -p "$label [$prompt]: " reply </dev/tty
         if [ -z "$reply" ]; then
             printf '%s\n' "$default_value"
             return
