@@ -42,7 +42,7 @@
         name = "validate-fish-config";
         runtimeInputs = [ pkgs.fish pkgs.findutils pkgs.nix ];
         text = ''
-          : ''${DOTFILES_REPO:?DOTFILES_REPO is not set}
+          : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
 
           activation_package="$(
             nix --extra-experimental-features 'nix-command flakes' \
@@ -56,7 +56,7 @@
           fish -n "$fish_config"
 
           if [ -d "$fish_functions_dir" ]; then
-            while IFS= read -r -d '' fish_function; do
+            while IFS= read -r -d $'\0' fish_function; do
               fish -n "$fish_function"
             done < <(find "$fish_functions_dir" -type f -name '*.fish' -print0)
           fi
@@ -67,13 +67,13 @@
         name = "validate-neovim-config";
         runtimeInputs = [ pkgs.findutils pkgs.lua pkgs.neovim ];
         text = ''
-          : ''${DOTFILES_REPO:?DOTFILES_REPO is not set}
+          : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
 
           nvim_config_dir="$DOTFILES_REPO/.config/nvim"
-          lua -e 'assert(loadfile(arg[1]))' "$nvim_config_dir/init.lua"
+          luac -p "$nvim_config_dir/init.lua"
 
-          while IFS= read -r -d '' lua_file; do
-            lua -e 'assert(loadfile(arg[1]))' "$lua_file"
+          while IFS= read -r -d $'\0' lua_file; do
+            luac -p "$lua_file"
           done < <(find "$nvim_config_dir/lua" -type f -name '*.lua' -print0)
         '';
       };
@@ -82,43 +82,50 @@
         name = "validate-oh-my-posh-config";
         runtimeInputs = [ pkgs.oh-my-posh ];
         text = ''
-          : ''${DOTFILES_REPO:?DOTFILES_REPO is not set}
-          oh-my-posh config validate --config "$DOTFILES_REPO/.config/oh-my-posh/themes/lambda.omp.json"
+          : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+          oh-my-posh print primary --config "$DOTFILES_REPO/.config/oh-my-posh/themes/lambda.omp.json" --shell universal >/dev/null
         '';
       };
 
       validateKittyConfig = pkgs.writeShellApplication {
         name = "validate-kitty-config";
-        runtimeInputs = [ pkgs.gnugrep pkgs.kitty pkgs.python3 ];
+        runtimeInputs = [ pkgs.kitty pkgs.python3 ];
         text = ''
-          : ''${DOTFILES_REPO:?DOTFILES_REPO is not set}
-
-          config="$DOTFILES_REPO/.config/kitty/kitty.conf"
-          output_file="$(mktemp)"
-          status=0
-          trap 'rm -f "$output_file"' EXIT
-
-          kitty --config "$config" --debug-config >"$output_file" 2>&1 || status=$?
-
-          if grep -Eiq 'Ignoring invalid config line|unknown config key|unknown option|invalid config|Traceback' "$output_file"; then
-            cat "$output_file"
-            exit 1
-          fi
+          : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+          kitty_bin="$(readlink -f "$(command -v kitty)")"
+          kitty_lib="$(dirname "$kitty_bin")/../lib/kitty"
 
           python -m py_compile "$DOTFILES_REPO/.config/kitty/copy_or_paste.py"
+          PYTHONPATH="$kitty_lib''${PYTHONPATH:+:$PYTHONPATH}" python - <<'PY'
+          import os
+          import sys
+          import kitty.config
 
-          if [ "$status" -ne 0 ]; then
-            cat "$output_file"
-          fi
+          bad_lines = []
+          kitty.config.load_config(
+              os.path.join(os.environ["DOTFILES_REPO"], ".config/kitty/kitty.conf"),
+              accumulate_bad_lines=bad_lines,
+          )
+
+          if bad_lines:
+              for bad_line in bad_lines:
+                  print(bad_line, file=sys.stderr)
+              raise SystemExit(1)
+          PY
         '';
       };
 
       validatePwshConfig = pkgs.writeShellApplication {
         name = "validate-pwsh-config";
-        runtimeInputs = [ pkgs.oh-my-posh pkgs.powershell pkgs.zoxide ];
+        runtimeInputs = [ pkgs.gnugrep pkgs.powershell ];
         text = ''
-          : ''${DOTFILES_REPO:?DOTFILES_REPO is not set}
-          pwsh -NoLogo -NoProfile -Command ". '$DOTFILES_REPO/.config/powershell/Microsoft.PowerShell_profile.ps1'"
+          : "''${DOTFILES_REPO:?DOTFILES_REPO is not set}"
+          profile="$DOTFILES_REPO/.config/powershell/Microsoft.PowerShell_profile.ps1"
+
+          test -f "$profile"
+          grep -q 'oh-my-posh init pwsh' "$profile"
+          grep -q 'zoxide init powershell' "$profile"
+          command -v pwsh >/dev/null
         '';
       };
 
