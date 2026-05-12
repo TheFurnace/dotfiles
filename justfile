@@ -4,6 +4,10 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
+# Run the standalone Home Manager installer.
+install:
+    ./install.sh
+
 # Symlink repo-managed config files into ~/.config.
 link:
     ./setup.sh
