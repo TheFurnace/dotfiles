@@ -34,23 +34,14 @@
       helperLib = import ./.flake-modules/lib.nix {
         inherit nixpkgs home-manager homeModule nixosModule;
       };
-    in
-    {
-      # Public helpers for downstream flakes.
-      lib = helperLib;
 
-      # Public modules for direct consumption.
-      homeManagerModules.default = homeModule;
-      nixosModules.default = nixosModule;
-
-      # Small built-in examples that also exercise the exported helpers.
-      homeConfigurations.example = helperLib.mkHomeConfiguration {
+      exampleHomeConfiguration = helperLib.mkHomeConfiguration {
         username = "demo";
         homeDirectory = "/home/demo";
         stateVersion = "25.11";
       };
 
-      nixosConfigurations.example = helperLib.mkNixosConfiguration {
+      exampleNixosConfiguration = helperLib.mkNixosConfiguration {
         hostname = "dotfiles-example";
         username = "demo";
         homeDirectory = "/home/demo";
@@ -61,5 +52,23 @@
           }
         ];
       };
+
+      devShellModule = import ./.flake-modules/dev-shell.nix {
+        inherit nixpkgs exampleHomeConfiguration;
+      };
+    in
+    {
+      # Public helpers for downstream flakes.
+      lib = helperLib;
+
+      # Public modules for direct consumption.
+      homeManagerModules.default = homeModule;
+      nixosModules.default = nixosModule;
+
+      # Small built-in examples that also exercise the exported helpers.
+      homeConfigurations.example = exampleHomeConfiguration;
+
+      nixosConfigurations.example = exampleNixosConfiguration;
+      devShells = devShellModule.devShells;
     };
 }

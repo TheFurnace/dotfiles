@@ -347,6 +347,25 @@ Recipes:
 
 `pull-config` accepts absolute paths or paths relative to `~/.config/`, but only under top-level entries that already exist in this repo's `.config/` and actually contain files in the repo. With no paths, it scans only those matching managed subtrees.
 
+## Development shell
+
+For repo-local validation work, this flake also exposes a dev shell:
+
+```bash
+nix develop .#default
+```
+
+It provides the core tools used by this repo's config (`fish`, `nvim`, `oh-my-posh`, `kitty`, `pwsh`, `zoxide`, and related basics) and prepares a temporary `$HOME` that points those tools at this checkout's `.config/`.
+
+Available validation commands inside the shell:
+
+- `validate-fish-config`
+- `validate-neovim-config`
+- `validate-oh-my-posh-config`
+- `validate-kitty-config`
+- `validate-pwsh-config`
+- `validate-dotfiles-config`
+
 ## Notes
 
 - Files under `.config/` are discovered recursively at evaluation time, so new config subdirectories are picked up automatically on the next rebuild.
