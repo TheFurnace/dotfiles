@@ -18,7 +18,5 @@ jobs:
     steps:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
-      - name: Checkout code
-        uses: actions/checkout@v5
       - name: Initialize dev shell
         run: nix develop .#default --command bash -lc 'command -v fish nvim oh-my-posh kitty pwsh validate-dotfiles-config'
