@@ -155,6 +155,22 @@ This installs the same user environment, enables `programs.home-manager`, and wi
 
 So the setup is almost entirely plug-and-play, but changing the OS-level login shell is still a one-time system step outside Home Manager.
 
+### Quick install from this repository
+
+If the machine already has the Nix package manager installed, you can clone this repo and run:
+
+```bash
+./install.sh
+```
+
+The installer:
+
+- prompts for standalone Home Manager settings such as username, home directory, system, state version, and mutable mode
+- uses `nix shell` to provide `git` and `home-manager` when they are not already installed
+- runs `nix flake check` for this repo
+- builds the generated Home Manager activation package
+- asks for confirmation before running `home-manager switch`
+
 ### Example
 
 You can still wire the module manually:
