@@ -9,15 +9,15 @@
       "locked": {
         "lastModified": 1775900011,
         "narHash": "sha256-QUGu6CJYFQ5AWVV0n3/FsJyV+1/gj7HSDx68/SX9pwM=",
-        "owner": "nix-community",
-        "repo": "home-manager",
+        "ref": "refs/heads/master",
         "rev": "b0569dc6ec1e6e7fefd8f6897184e4c191cd768e",
-        "type": "github"
+        "revCount": 6509,
+        "type": "git",
+        "url": "https://github.com/nix-community/home-manager"
       },
       "original": {
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "type": "github"
+        "type": "git",
+        "url": "https://github.com/nix-community/home-manager"
       }
     },
     "nix-index-database": {
@@ -29,15 +29,15 @@
       "locked": {
         "lastModified": 1775365369,
         "narHash": "sha256-DgH5mveLoau20CuTnaU5RXZWgFQWn56onQ4Du2CqYoI=",
-        "owner": "nix-community",
-        "repo": "nix-index-database",
+        "ref": "refs/heads/main",
         "rev": "cef5cf82671e749ac87d69aadecbb75967e6f6c3",
-        "type": "github"
+        "revCount": 573,
+        "type": "git",
+        "url": "https://github.com/nix-community/nix-index-database"
       },
       "original": {
-        "owner": "nix-community",
-        "repo": "nix-index-database",
-        "type": "github"
+        "type": "git",
+        "url": "https://github.com/nix-community/nix-index-database"
       }
     },
     "nixpkgs": {
