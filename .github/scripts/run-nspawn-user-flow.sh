@@ -104,12 +104,19 @@ run_as_user() (
   exec setpriv --reuid "$container_user_uid" --regid "$container_user_gid" --init-groups "$@"
 )
 
-run_as_user \
-  script \
+printf -v run_install_command '%q ' \
+  setpriv \
+  --reuid "$container_user_uid" \
+  --regid "$container_user_gid" \
+  --init-groups \
+  "$CONTAINER_HOME/run-install.sh"
+run_install_command="${run_install_command% }"
+
+script \
   --quiet \
   --return \
   --flush \
-  --command "$CONTAINER_HOME/run-install.sh" \
+  --command "$run_install_command" \
   "$CONTAINER_HOME/install-transcript.txt" \
   <"$CONTAINER_HOME/install-answers.txt"
 
