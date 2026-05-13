@@ -35,9 +35,10 @@ ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 
 answers_file="$test_root/install-input.txt"
 # Feed more empty responses than the installer currently consumes so it can keep
-# accepting defaults if a prompt or two is added later. The installer currently
-# uses six defaulted prompts in this non-activation path, so 16 leaves headroom.
-max_default_responses=16
+# accepting defaults if a prompt or two is added later.
+current_default_prompt_count=6
+response_headroom=10
+max_default_responses=$((current_default_prompt_count + response_headroom))
 {
   for _ in $(seq 1 "$max_default_responses"); do
     printf '\n'
