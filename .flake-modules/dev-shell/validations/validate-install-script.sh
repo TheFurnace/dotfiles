@@ -53,7 +53,7 @@ import sys
 import time
 
 SELECT_TIMEOUT_SECONDS = 1.0
-TIMEOUT_SECONDS = 1800
+TIMEOUT_SECONDS = 600
 
 install_script = os.environ["INSTALL_SCRIPT"]
 bash_path = os.environ["INSTALL_SCRIPT_BASH"]
@@ -114,11 +114,6 @@ with open(transcript_path, "wb") as transcript_file:
                 _, status = os.waitpid(pid, 0)
                 exit_status = status
                 break
-
-        waited_pid, status = os.waitpid(pid, os.WNOHANG)
-        if waited_pid == pid:
-            exit_status = status
-            break
 
 if exit_status is None:
     raise SystemExit("install.sh exited without a status")
