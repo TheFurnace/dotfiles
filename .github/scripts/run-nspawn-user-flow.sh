@@ -202,7 +202,14 @@ sudo systemd-nspawn \
 nspawn_pid=$!
 
 wait_for_machine
-run_in_machine /bin/bash "$container_script_path"
+run_in_machine \
+  env \
+  DOTFILES_REPO="$repo_root" \
+  CONTAINER_HOME="$container_home" \
+  CONTAINER_USER="$container_user" \
+  HOST_UID="$host_user_uid" \
+  HOST_GID="$host_user_gid" \
+  /bin/bash "$container_script_path"
 sudo machinectl shell \
   --quiet \
   --uid="$container_user" \
