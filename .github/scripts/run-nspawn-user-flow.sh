@@ -67,6 +67,8 @@ useradd --create-home --shell /bin/bash "$CONTAINER_USER"
 mkdir -p "$CONTAINER_RUNTIME_DIR"
 chown "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_RUNTIME_DIR"
 
+# Accept the four installer defaults, disable mutable mode, then approve
+# activation of the generated Home Manager configuration.
 printf '\n\n\n\nn\ny\n' >"$CONTAINER_HOME/install-answers.txt"
 
 cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
@@ -83,10 +85,21 @@ exec env \
   bash "$DOTFILES_REPO/install.sh"
 SCRIPT
 
+cat >"$CONTAINER_HOME/validate-pwsh.ps1" <<'SCRIPT'
+$ErrorActionPreference = "Stop"
+
+Get-Command nix, oh-my-posh, Set-PoshPrompt | Out-Null
+
+if (-not ((Get-Content Function:\prompt -Raw) -match "oh-my-posh")) {
+    throw "PowerShell prompt was not initialized by oh-my-posh."
+}
+SCRIPT
+
 chmod +x "$CONTAINER_HOME/run-install.sh"
 chown "$CONTAINER_USER:$CONTAINER_USER" \
   "$CONTAINER_HOME/install-answers.txt" \
-  "$CONTAINER_HOME/run-install.sh"
+  "$CONTAINER_HOME/run-install.sh" \
+  "$CONTAINER_HOME/validate-pwsh.ps1"
 
 run_as_user() {
   runuser -u "$CONTAINER_USER" -- env \
@@ -111,7 +124,7 @@ grep -Fq "Activate this Home Manager configuration now [y/N]:" "$CONTAINER_HOME/
 
 run_as_user fish -lic 'command -sq nix; and command -sq oh-my-posh; and functions -q _omp_hook'
 run_as_user bash -lic 'command -v nix >/dev/null && command -v oh-my-posh >/dev/null && declare -F _omp_hook >/dev/null'
-run_as_user pwsh -NoLogo -Command '$ErrorActionPreference = "Stop"; Get-Command nix,oh-my-posh,Set-PoshPrompt | Out-Null; if (-not ((Get-Content Function:\prompt -Raw) -match "oh-my-posh")) { throw "PowerShell prompt was not initialized by oh-my-posh." }'
+run_as_user pwsh -NoLogo -File "$CONTAINER_HOME/validate-pwsh.ps1"
 run_as_user nvim --headless '+quitall'
 
 [ "$(run_as_user git config --get alias.adog)" = "log --all --decorate --oneline --graph" ]
