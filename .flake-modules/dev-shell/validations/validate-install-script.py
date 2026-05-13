@@ -45,7 +45,7 @@ def main() -> int:
         while True:
             if time.monotonic() > deadline:
                 raise SystemExit(
-                    f"Timed out after {OVERALL_TIMEOUT_SECONDS} seconds while waiting for install.sh to finish"
+                    f"Timed out after {OVERALL_TIMEOUT_SECONDS} seconds while waiting for the install script to finish"
                 )
 
             ready, _, _ = select.select([fd], [], [], SELECT_TIMEOUT_SECONDS)

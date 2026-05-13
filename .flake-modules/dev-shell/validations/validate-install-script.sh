@@ -33,12 +33,21 @@ required_path_commands=(
 )
 
 safe_path=""
-append_path_dir() {
+safe_path_contains_dir() {
   local dir="$1"
   case ":$safe_path:" in
-    *":$dir:"*) ;;
-    *) safe_path="${safe_path:+$safe_path:}$dir" ;;
+    *":$dir:"*) return 0 ;;
+    *) return 1 ;;
   esac
+}
+
+append_path_dir() {
+  local dir="$1"
+  if safe_path_contains_dir "$dir"; then
+    return
+  fi
+
+  safe_path="${safe_path:+$safe_path:}$dir"
 }
 
 assert_command_absent() {
