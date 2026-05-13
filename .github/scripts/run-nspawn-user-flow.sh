@@ -69,7 +69,7 @@ container_user_uid="$(id -u "$CONTAINER_USER")"
 container_user_gid="$(id -g "$CONTAINER_USER")"
 
 mkdir -p -m 700 "$CONTAINER_RUNTIME_DIR"
-chown "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_RUNTIME_DIR"
+chown "$container_user_uid:$container_user_gid" "$CONTAINER_RUNTIME_DIR"
 chmod 700 "$CONTAINER_RUNTIME_DIR"
 
 # Answers, in order:
@@ -103,7 +103,7 @@ if (-not ((Get-Content Function:\prompt -Raw) -match "oh-my-posh")) {
 SCRIPT
 
 chmod +x "$CONTAINER_HOME/run-install.sh"
-chown "$CONTAINER_USER:$CONTAINER_USER" \
+chown "$container_user_uid:$container_user_gid" \
   "$CONTAINER_HOME/install-answers.txt" \
   "$CONTAINER_HOME/run-install.sh" \
   "$CONTAINER_HOME/validate-pwsh.ps1"
