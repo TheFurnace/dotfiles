@@ -5,7 +5,7 @@ import sys
 import time
 
 SELECT_TIMEOUT_SECONDS = 1.0
-OVERALL_TIMEOUT_SECONDS = 600
+OVERALL_TIMEOUT_SECONDS = 120
 
 
 def main() -> int:
