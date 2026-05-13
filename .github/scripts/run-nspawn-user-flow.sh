@@ -8,6 +8,8 @@ container_home="/home/$container_user"
 container_runtime_dir="/tmp/runtime-$container_user"
 container_script_path="/usr/local/bin/run-user-flow.sh"
 host_nix_profile="${HOME}/.nix-profile"
+host_user_uid="$(id -u)"
+host_user_gid="$(id -g)"
 container_path="$container_home/.nix-profile/bin:$host_nix_profile/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ubuntu_release="${UBUNTU_RELEASE:-noble}"
 ubuntu_mirror="${UBUNTU_MIRROR:-https://archive.ubuntu.com/ubuntu/}"
@@ -58,7 +60,11 @@ sudo ln -sfn "$host_nix_profile/etc/profile.d/nix.fish" "$rootfs/etc/fish/conf.d
 sudo tee "$rootfs$container_script_path" >/dev/null <<'EOF'
 set -euo pipefail
 
-useradd --create-home --shell /bin/bash "$CONTAINER_USER"
+if ! getent group "$HOST_GID" >/dev/null; then
+  groupadd --gid "$HOST_GID" "$CONTAINER_USER"
+fi
+
+useradd --create-home --shell /bin/bash --uid "$HOST_UID" --gid "$HOST_GID" "$CONTAINER_USER"
 container_user_uid="$(id -u "$CONTAINER_USER")"
 container_user_gid="$(id -g "$CONTAINER_USER")"
 
@@ -114,6 +120,10 @@ run_as_user() (
 )
 
 run_install_command_args=(
+  setpriv
+  --reuid "$container_user_uid"
+  --regid "$container_user_gid"
+  --init-groups
   /bin/bash
   "$CONTAINER_HOME/run-install.sh"
 )
@@ -134,8 +144,6 @@ script \
   "$CONTAINER_HOME/install-transcript.txt" \
   <"$CONTAINER_HOME/install-answers.txt"
 
-chown -R "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_HOME"
-
 grep -Fq "Activate this Home Manager configuration now [y/N]:" "$CONTAINER_HOME/install-transcript.txt"
 [ -f "$CONTAINER_HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]
 [ -f "$CONTAINER_HOME/.config/git/config" ]
@@ -151,7 +159,7 @@ EOF
 sudo chmod 755 "$rootfs$container_script_path"
 
 binds=(
-  --bind-ro=/nix
+  --bind=/nix
   --bind-ro="$host_nix_profile:$host_nix_profile"
   --bind-ro="$repo_root:$repo_root"
 )
@@ -171,4 +179,6 @@ sudo systemd-nspawn \
   --setenv=CONTAINER_PATH="$container_path" \
   --setenv=CONTAINER_RUNTIME_DIR="$container_runtime_dir" \
   --setenv=CONTAINER_USER="$container_user" \
+  --setenv=HOST_UID="$host_user_uid" \
+  --setenv=HOST_GID="$host_user_gid" \
   /bin/bash "$container_script_path"
