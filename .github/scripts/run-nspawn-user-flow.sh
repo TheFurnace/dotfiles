@@ -65,7 +65,7 @@ cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec env \
+exec /usr/bin/env \
   HOME="$CONTAINER_HOME" \
   LOGNAME="$CONTAINER_USER" \
   PATH="$CONTAINER_PATH" \
@@ -92,7 +92,7 @@ chown "$CONTAINER_USER:$CONTAINER_USER" \
   "$CONTAINER_HOME/validate-pwsh.ps1"
 
 run_as_user() {
-  runuser -u "$CONTAINER_USER" -- env \
+  runuser -u "$CONTAINER_USER" -- /usr/bin/env \
     HOME="$CONTAINER_HOME" \
     LOGNAME="$CONTAINER_USER" \
     PATH="$CONTAINER_PATH" \
