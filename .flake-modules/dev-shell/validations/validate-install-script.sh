@@ -21,9 +21,7 @@ cleanup() {
 trap cleanup EXIT
 
 test_home="$test_root/home"
-install_test_tmpdir="$test_root/tmp"
 mkdir -p "$test_home"
-mkdir -p "$install_test_tmpdir"
 
 required_path_commands=(
   bash
@@ -88,6 +86,7 @@ install_default_system="$(
 
 export INSTALL_SCRIPT="$install_script"
 install_script_bash="$(command -v bash)"
+export INSTALL_SCRIPT_BASH="$install_script_bash"
 export INSTALL_TEST_HOME="$test_home"
 export INSTALL_TEST_PATH="$safe_path"
 export INSTALL_TRANSCRIPT="$test_root/install-transcript.txt"
@@ -113,15 +112,15 @@ answers_file="$test_root/install-answers.txt"
 } >"$answers_file"
 
 install_command_script="$test_root/run-install-command.sh"
-cat >"$install_command_script" <<EOF
+cat >"$install_command_script" <<'EOF'
 #!/usr/bin/env bash
 exec env -i \
-  HOME=$(printf '%q' "$INSTALL_TEST_HOME") \
-  PATH=$(printf '%q' "$INSTALL_TEST_PATH") \
-  TMPDIR=$(printf '%q' "$install_test_tmpdir") \
-  USER=$(printf '%q' "$INSTALL_DEFAULT_USERNAME") \
-  $(printf '%q' "$install_script_bash") \
-  $(printf '%q' "$install_script")
+  HOME="$INSTALL_TEST_HOME" \
+  PATH="$INSTALL_TEST_PATH" \
+  TMPDIR="$INSTALL_TEST_HOME" \
+  USER="$INSTALL_DEFAULT_USERNAME" \
+  "$INSTALL_SCRIPT_BASH" \
+  "$INSTALL_SCRIPT"
 EOF
 chmod +x "$install_command_script"
 
