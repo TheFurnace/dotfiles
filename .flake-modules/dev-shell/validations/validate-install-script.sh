@@ -88,6 +88,7 @@ export INSTALL_DEFAULT_USERNAME="testuser"
 export INSTALL_DEFAULT_HOME="$test_home"
 export INSTALL_DEFAULT_STATE_VERSION="25.11"
 export INSTALL_DEFAULT_SYSTEM="$install_default_system"
+install_test_tmpdir="$INSTALL_TEST_HOME"
 
 answers_file="$test_root/install-answers.txt"
 {
@@ -108,10 +109,12 @@ answers_file="$test_root/install-answers.txt"
 printf -v install_command 'env -i HOME=%q PATH=%q TMPDIR=%q USER=%q %q %q' \
   "$INSTALL_TEST_HOME" \
   "$INSTALL_TEST_PATH" \
-  "$INSTALL_TEST_HOME" \
+  "$install_test_tmpdir" \
   "$INSTALL_DEFAULT_USERNAME" \
   "$install_script_bash" \
   "$install_script"
+# The validation shell is Linux-only, so use util-linux script to provide a PTY
+# while keeping the install command environment restricted to the sanitized PATH.
 if ! script --quiet --return --flush --command "$install_command" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null; then
   echo "install.sh validation command failed; transcript follows:" >&2
   cat "$INSTALL_TRANSCRIPT" >&2
