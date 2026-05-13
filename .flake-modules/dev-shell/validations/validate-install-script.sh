@@ -1,4 +1,6 @@
 : "${DOTFILES_REPO:?DOTFILES_REPO is not set. This should be set by the dotfiles dev shell.}"
+set -euo pipefail
+
 install_script="$DOTFILES_REPO/install.sh"
 
 test -x "$install_script"
@@ -22,17 +24,35 @@ append_path_dir() {
   esac
 }
 
-for command_name in bash cat dirname grep id mktemp mv nix python3 pwd rm sed; do
-  append_path_dir "$(dirname "$(command -v "$command_name")")"
+for command_name in bash cat dirname grep id mktemp mv nix python3 rm sed; do
+  resolved_path="$(type -P "$command_name" || true)"
+  if [[ -n "$resolved_path" && "$resolved_path" == /* ]]; then
+    append_path_dir "$(dirname "$resolved_path")"
+  fi
 done
 
-PATH="$safe_path" command -v nix >/dev/null 2>&1
-if PATH="$safe_path" command -v git >/dev/null 2>&1; then
+if ! PATH="$safe_path" command -v nix >/dev/null 2>&1; then
+  echo "Expected nix to be available in sanitized PATH: $safe_path" >&2
   exit 1
 fi
-if PATH="$safe_path" command -v home-manager >/dev/null 2>&1; then
+
+if git_path="$(PATH="$safe_path" command -v git 2>/dev/null)"; then
+  echo "Expected git to be absent from sanitized PATH, found at: $git_path" >&2
+  echo "Sanitized PATH: $safe_path" >&2
   exit 1
 fi
+
+if home_manager_path="$(PATH="$safe_path" command -v home-manager 2>/dev/null)"; then
+  echo "Expected home-manager to be absent from sanitized PATH, found at: $home_manager_path" >&2
+  echo "Sanitized PATH: $safe_path" >&2
+  exit 1
+fi
+
+install_default_system="$(
+  PATH="$safe_path" nix \
+    --extra-experimental-features "nix-command flakes" \
+    eval --impure --raw --expr 'builtins.currentSystem'
+)"
 
 export INSTALL_SCRIPT="$install_script"
 install_script_bash="$(command -v bash)"
@@ -43,7 +63,7 @@ export INSTALL_TRANSCRIPT="$test_root/install-transcript.txt"
 export INSTALL_DEFAULT_USERNAME="testuser"
 export INSTALL_DEFAULT_HOME="$test_home"
 export INSTALL_DEFAULT_STATE_VERSION="25.11"
-export INSTALL_DEFAULT_SYSTEM="x86_64-linux"
+export INSTALL_DEFAULT_SYSTEM="$install_default_system"
 
 python3 <<'PY'
 import os
