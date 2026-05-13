@@ -386,24 +386,22 @@ Recipes:
 
 ## Development shell
 
-For repo-local validation work, this flake also exposes a dev shell:
+For repo-local work, this flake exposes several focused dev shells:
 
 ```bash
 nix develop .#default
 ```
 
-It provides the core tools used by this repo's config (`fish`, `nvim`, `oh-my-posh`, `kitty`, `pwsh`, `zoxide`, and related basics) and prepares a temporary `$HOME` that points those tools at this checkout's `.config/`.
+Each shell prepares a temporary `$HOME` that points the relevant tools at this checkout's `.config/`.
 
-Available validation commands inside the shell:
-
-- `validate-fish-config`
-- `validate-neovim-config`
-- `validate-oh-my-posh-config`
-- `validate-kitty-config`
-- `validate-pwsh-config`
-- `validate-setup-script`
-- `validate-install-script`
-- `validate-dotfiles-config`
+- `nix develop .#default` — general repo work with `nix` and `just`
+- `nix develop .#fish` — fish config work with `fish`, its helper tools, and `validate-fish-config`
+- `nix develop .#neovim` — Neovim config work with `nvim`, `tree-sitter`, and `validate-neovim-config`
+- `nix develop .#oh-my-posh` — prompt theme work with `oh-my-posh` and `validate-oh-my-posh-config`
+- `nix develop .#kitty` — kitty config work with `kitty` and `validate-kitty-config`
+- `nix develop .#powershell` — PowerShell profile work with `pwsh`, prompt helpers, and `validate-pwsh-config`
+- `nix develop .#scripts` — setup/install script work with `bash`, `nix`, `validate-setup-script`, and `validate-install-script`
+- `nix develop .#validation` — run the full validation suite via `validate-dotfiles-config`
 
 ## Notes
 

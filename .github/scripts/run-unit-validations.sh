@@ -22,40 +22,30 @@ run_check() {
 }
 
 run_check "flake check" nix flake check
-if nix develop .#default --command bash -lc '
-  set -euo pipefail
-  fail_count=0
+run_validation() {
+  local label="$1"
+  local shell_name="$2"
+  local command_name="$3"
 
-  run_validation() {
-    local label="$1"
-    local command_name="$2"
-
-    echo "==> $label"
-    if "$command_name"; then
-      echo "PASS: $label"
-    else
-      echo "FAIL: $label"
-      fail_count=$((fail_count + 1))
-    fi
-    echo
-  }
-
-  run_validation "validate fish config" validate-fish-config
-  run_validation "validate neovim config" validate-neovim-config
-  run_validation "validate oh-my-posh config" validate-oh-my-posh-config
-  run_validation "validate kitty config" validate-kitty-config
-  run_validation "validate powershell config" validate-pwsh-config
-  run_validation "validate setup script" validate-setup-script
-  run_validation "validate install script" validate-install-script
-
-  if [ "$fail_count" -gt 0 ]; then
-    exit 1
+  echo "==> $label"
+  if nix develop ".#${shell_name}" --command bash -lc "set -euo pipefail; ${command_name}"; then
+    echo "PASS: $label"
+    pass_count=$((pass_count + 1))
+  else
+    echo "FAIL: $label"
+    fail_count=$((fail_count + 1))
   fi
-'; then
-  pass_count=$((pass_count + 1))
-else
-  fail_count=$((fail_count + 1))
-fi
+  echo
+}
+
+run_validation "validate fish config" fish validate-fish-config
+run_validation "validate neovim config" neovim validate-neovim-config
+run_validation "validate oh-my-posh config" oh-my-posh validate-oh-my-posh-config
+run_validation "validate kitty config" kitty validate-kitty-config
+run_validation "validate powershell config" powershell validate-pwsh-config
+run_validation "validate setup script" scripts validate-setup-script
+run_validation "validate install script" scripts validate-install-script
+run_validation "validate full dotfiles config" validation validate-dotfiles-config
 
 echo "Validation summary: $pass_count passed, $fail_count failed."
 
