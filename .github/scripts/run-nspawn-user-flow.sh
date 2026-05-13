@@ -34,6 +34,8 @@ sudo debootstrap \
   "$rootfs" \
   "$ubuntu_mirror"
 
+sudo chmod 755 "$rootfs"
+
 # Write the container setup script into the rootfs so nspawn does not need an
 # interactive stdin stream to start the flow, and keep it out of /tmp because
 # nspawn can mount a fresh tmpfs there.
