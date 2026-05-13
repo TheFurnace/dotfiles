@@ -386,22 +386,15 @@ Recipes:
 
 ## Development shell
 
-For repo-local work, this flake exposes several focused dev shells:
+For repo-local validation work, this flake exposes a single dev shell:
 
 ```bash
 nix develop .#default
 ```
 
-Each shell prepares a temporary `$HOME` that points the relevant tools at this checkout's `.config/`.
+The shell prepares a temporary `$HOME` that points the relevant tools at this checkout's `.config/`.
 
-- `nix develop .#default` — general repo work with `nix` and `just`
-- `nix develop .#fish` — fish config work with `fish`, its helper tools, and `validate-fish-config`
-- `nix develop .#neovim` — Neovim config work with `nvim`, `tree-sitter`, and `validate-neovim-config`
-- `nix develop .#oh-my-posh` — prompt theme work with `oh-my-posh` and `validate-oh-my-posh-config`
-- `nix develop .#kitty` — kitty config work with `kitty` and `validate-kitty-config`
-- `nix develop .#powershell` — PowerShell profile work with `pwsh`, prompt helpers, and `validate-pwsh-config`
-- `nix develop .#scripts` — setup/install script work with `bash`, `nix`, `validate-setup-script`, and `validate-install-script`
-- `nix develop .#validation` — run the full validation suite via `validate-dotfiles-config`
+- `nix develop .#default` — CI/local validation shell with `nix` and `validate-dotfiles-config`
 
 ## Notes
 
