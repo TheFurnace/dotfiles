@@ -3,7 +3,7 @@ set -euo pipefail
 
 install_script="$DOTFILES_REPO/install.sh"
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
-temp_root="${TMPDIR:-$HOME}"
+temp_root="${TMPDIR:-/tmp}"
 
 test -x "$install_script"
 bash -n "$install_script"
@@ -60,7 +60,7 @@ assert_command_absent() {
 }
 
 for command_name in "${required_path_commands[@]}"; do
-  resolved_path="$(type -P "$command_name" || true)"
+  resolved_path="$(command -v "$command_name" || true)"
   if [[ -n "$resolved_path" && "$resolved_path" == /* ]]; then
     append_path_dir "$(dirname "$resolved_path")"
   fi
