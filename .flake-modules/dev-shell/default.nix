@@ -6,11 +6,7 @@ let
     inherit pkgs exampleHomeConfiguration;
   };
   commonShellHook = ''
-    if command -v git >/dev/null 2>&1; then
-      export DOTFILES_REPO="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-    else
-      export DOTFILES_REPO="$(pwd)"
-    fi
+    export DOTFILES_REPO="$(command -v git >/dev/null 2>&1 && git rev-parse --show-toplevel 2>/dev/null || pwd)"
     export DOTFILES_DEV_HOME="''${TMPDIR:-/tmp}/dotfiles-dev-shell"
     export HOME="$DOTFILES_DEV_HOME/home"
     export XDG_CONFIG_HOME="$DOTFILES_REPO/.config"
