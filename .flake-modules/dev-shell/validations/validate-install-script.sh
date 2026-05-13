@@ -52,6 +52,9 @@ import select
 import sys
 import time
 
+SELECT_TIMEOUT_SECONDS = 1.0
+TIMEOUT_SECONDS = 1800
+
 install_script = os.environ["INSTALL_SCRIPT"]
 bash_path = os.environ["INSTALL_SCRIPT_BASH"]
 transcript_path = os.environ["INSTALL_TRANSCRIPT"]
@@ -79,7 +82,7 @@ if pid == 0:
     os.environ.update(env)
     os.execv(bash_path, [bash_path, install_script])
 
-deadline = time.monotonic() + 1800
+deadline = time.monotonic() + TIMEOUT_SECONDS
 transcript = bytearray()
 answer_index = 0
 exit_status = None
@@ -89,7 +92,7 @@ with open(transcript_path, "wb") as transcript_file:
         if time.monotonic() > deadline:
             raise SystemExit("Timed out while waiting for install.sh to finish")
 
-        ready, _, _ = select.select([fd], [], [], 1.0)
+        ready, _, _ = select.select([fd], [], [], SELECT_TIMEOUT_SECONDS)
         if ready:
             try:
                 chunk = os.read(fd, 4096)
