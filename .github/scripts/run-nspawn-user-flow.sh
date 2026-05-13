@@ -50,6 +50,8 @@ sudo tee "$rootfs$container_script_path" >/dev/null <<'EOF'
 set -euo pipefail
 
 useradd --create-home --shell /bin/bash "$CONTAINER_USER"
+container_user_uid="$(id -u "$CONTAINER_USER")"
+container_user_gid="$(id -g "$CONTAINER_USER")"
 
 mkdir -p -m 700 "$CONTAINER_RUNTIME_DIR"
 chown "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_RUNTIME_DIR"
@@ -99,7 +101,7 @@ run_as_user() (
   export USER="$CONTAINER_USER"
   export XDG_RUNTIME_DIR="$CONTAINER_RUNTIME_DIR"
 
-  exec setpriv --reuid "$CONTAINER_USER" --regid "$CONTAINER_USER" --init-groups "$@"
+  exec setpriv --reuid "$container_user_uid" --regid "$container_user_gid" --init-groups "$@"
 )
 
 run_as_user \
