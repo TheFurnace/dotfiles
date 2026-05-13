@@ -28,8 +28,7 @@ let
 in
 {
   devShells.${defaultSystem} = {
-    default = mkDotfilesShell "default" (with pkgs; [
-      just
+    default = mkDotfilesShell "validation" (with pkgs; [
       nix
       validations.validationPackages.validateDotfilesConfig
     ]);
