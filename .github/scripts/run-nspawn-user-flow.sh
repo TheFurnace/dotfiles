@@ -91,15 +91,16 @@ chown "$CONTAINER_USER:$CONTAINER_USER" \
   "$CONTAINER_HOME/run-install.sh" \
   "$CONTAINER_HOME/validate-pwsh.ps1"
 
-run_as_user() {
-  HOME="$CONTAINER_HOME" \
-    LOGNAME="$CONTAINER_USER" \
-    PATH="$CONTAINER_PATH" \
-    TERM="xterm-256color" \
-    USER="$CONTAINER_USER" \
-    XDG_RUNTIME_DIR="$CONTAINER_RUNTIME_DIR" \
-    setpriv --reuid "$CONTAINER_USER" --regid "$CONTAINER_USER" --init-groups "$@"
-}
+run_as_user() (
+  export HOME="$CONTAINER_HOME"
+  export LOGNAME="$CONTAINER_USER"
+  export PATH="$CONTAINER_PATH"
+  export TERM="xterm-256color"
+  export USER="$CONTAINER_USER"
+  export XDG_RUNTIME_DIR="$CONTAINER_RUNTIME_DIR"
+
+  exec setpriv --reuid "$CONTAINER_USER" --regid "$CONTAINER_USER" --init-groups "$@"
+)
 
 run_as_user \
   script \
