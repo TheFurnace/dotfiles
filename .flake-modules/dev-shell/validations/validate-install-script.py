@@ -39,12 +39,14 @@ def main() -> int:
     deadline = time.monotonic() + OVERALL_TIMEOUT_SECONDS
     transcript = bytearray()
     answer_index = 0
-    exit_status = None
+    exit_status = 0
 
     with open(transcript_path, "wb") as transcript_file:
         while True:
             if time.monotonic() > deadline:
-                raise SystemExit("Timed out while waiting for install.sh to finish")
+                raise SystemExit(
+                    f"Timed out after {OVERALL_TIMEOUT_SECONDS} seconds while waiting for install.sh to finish"
+                )
 
             ready, _, _ = select.select([fd], [], [], SELECT_TIMEOUT_SECONDS)
             if not ready:
@@ -70,9 +72,6 @@ def main() -> int:
                     break
                 os.write(fd, answer.encode())
                 answer_index += 1
-
-    if exit_status is None:
-        raise SystemExit("install.sh exited without a status")
 
     exit_code = os.waitstatus_to_exitcode(exit_status)
     if exit_code != 0:
