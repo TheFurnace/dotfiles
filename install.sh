@@ -103,7 +103,6 @@ validate_local_checkout_path() {
 
 default_username="${USER:-$(id -un)}"
 default_home="${HOME:-/home/$default_username}"
-default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
 default_state_version="25.11"
 dotfiles_url="$(resolve_dotfiles_url)"
 
@@ -111,11 +110,16 @@ echo "Installing standalone Home Manager config from:"
 echo "  $dotfiles_url"
 echo
 
-username="$(prompt_with_default "Username" "$default_username")"
-home_directory="$(prompt_with_default "Home directory" "$default_home")"
-state_version="$(prompt_with_default "Home Manager state version" "$default_state_version")"
-system="$(prompt_with_default "System" "$default_system")"
-mutable="$(prompt_yes_no "Enable mutable mode" "false")"
+username="${DOTFILES_INSTALL_USERNAME:-$(prompt_with_default "Username" "$default_username")}"
+home_directory="${DOTFILES_INSTALL_HOME:-$(prompt_with_default "Home directory" "$default_home")}"
+state_version="${DOTFILES_INSTALL_STATE_VERSION:-$(prompt_with_default "Home Manager state version" "$default_state_version")}"
+if [ -n "${DOTFILES_INSTALL_SYSTEM+x}" ]; then
+    system="$DOTFILES_INSTALL_SYSTEM"
+else
+    default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
+    system="$(prompt_with_default "System" "$default_system")"
+fi
+mutable="${DOTFILES_INSTALL_MUTABLE:-$(prompt_yes_no "Enable mutable mode" "false")}"
 local_path=""
 
 case "$mutable" in
@@ -212,13 +216,19 @@ if [ "$mutable" = "true" ]; then
 fi
 echo
 
+if [ "${DOTFILES_INSTALL_SKIP_NIX_OPS:-false}" = "true" ]; then
+    echo "Skipping nix flake check, build, and activation (DOTFILES_INSTALL_SKIP_NIX_OPS=true)."
+    exit 0
+fi
+
 echo "Running nix flake check for: $dotfiles_url"
 "${nix_cmd[@]}" flake check "$dotfiles_url"
 
 echo "Building the generated Home Manager activation package..."
 "${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
 
-if [ "$(prompt_yes_no "Activate this Home Manager configuration now" "false")" != "true" ]; then
+activate="${DOTFILES_INSTALL_ACTIVATE:-$(prompt_yes_no "Activate this Home Manager configuration now" "false")}"
+if [ "$activate" != "true" ]; then
     echo "Skipping activation."
     exit 0
 fi

@@ -68,6 +68,7 @@ in
       bash
       nix
       validations.validationPackages.validateInstallScript
+      validations.validationPackages.validateInstallScriptNixOnly
       validations.validationPackages.validateSetupScript
     ]);
 

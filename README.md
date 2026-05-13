@@ -400,7 +400,7 @@ Each shell prepares a temporary `$HOME` that points the relevant tools at this c
 - `nix develop .#oh-my-posh` — prompt theme work with `oh-my-posh` and `validate-oh-my-posh-config`
 - `nix develop .#kitty` — kitty config work with `kitty` and `validate-kitty-config`
 - `nix develop .#powershell` — PowerShell profile work with `pwsh`, prompt helpers, and `validate-pwsh-config`
-- `nix develop .#scripts` — setup/install script work with `bash`, `nix`, `validate-setup-script`, and `validate-install-script`
+- `nix develop .#scripts` — setup/install script work with `bash`, `nix`, `validate-setup-script`, `validate-install-script`, and `validate-install-script-nix-only`
 - `nix develop .#validation` — run the full validation suite via `validate-dotfiles-config`
 
 ## Notes

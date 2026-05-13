@@ -45,11 +45,18 @@ let
     text = builtins.readFile ./validations/validate-install-script.sh;
   };
 
+  validateInstallScriptNixOnly = pkgs.writeShellApplication {
+    name = "validate-install-script-nix-only";
+    runtimeInputs = [ pkgs.bash pkgs.coreutils pkgs.gnugrep pkgs.gnused pkgs.nix ];
+    text = builtins.readFile ./validations/validate-install-script-nix-only.sh;
+  };
+
   validateDotfilesConfig = pkgs.writeShellApplication {
     name = "validate-dotfiles-config";
     runtimeInputs = [
       validateFishConfig
       validateInstallScript
+      validateInstallScriptNixOnly
       validateNeovimConfig
       validateOhMyPoshConfig
       validateKittyConfig
@@ -65,6 +72,7 @@ in
       validateDotfilesConfig
       validateFishConfig
       validateInstallScript
+      validateInstallScriptNixOnly
       validateKittyConfig
       validateNeovimConfig
       validateOhMyPoshConfig
