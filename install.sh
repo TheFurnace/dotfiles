@@ -3,6 +3,7 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
+# Pinned to the flake.lock nixpkgs revision so the bootstrap git shell stays reproducible.
 bootstrap_git_package="github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa#git"
 default_mutable_checkout_subdir="dotfiles"
 
