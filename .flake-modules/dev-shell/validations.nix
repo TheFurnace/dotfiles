@@ -39,10 +39,17 @@ let
     text = builtins.readFile ./validations/validate-setup-script.sh;
   };
 
+  validateInstallScript = pkgs.writeShellApplication {
+    name = "validate-install-script";
+    runtimeInputs = [ pkgs.bash pkgs.coreutils pkgs.gnugrep pkgs.gnused pkgs.nix pkgs.python3 ];
+    text = builtins.readFile ./validations/validate-install-script.sh;
+  };
+
   validateDotfilesConfig = pkgs.writeShellApplication {
     name = "validate-dotfiles-config";
     runtimeInputs = [
       validateFishConfig
+      validateInstallScript
       validateNeovimConfig
       validateOhMyPoshConfig
       validateKittyConfig
@@ -57,6 +64,7 @@ in
     inherit
       validateDotfilesConfig
       validateFishConfig
+      validateInstallScript
       validateKittyConfig
       validateNeovimConfig
       validateOhMyPoshConfig

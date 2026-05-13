@@ -44,6 +44,7 @@ run_validation "validate oh-my-posh config" oh-my-posh validate-oh-my-posh-confi
 run_validation "validate kitty config" kitty validate-kitty-config
 run_validation "validate powershell config" powershell validate-pwsh-config
 run_validation "validate setup script" scripts validate-setup-script
+run_validation "validate install script" scripts validate-install-script
 run_validation "validate full dotfiles config" validation validate-dotfiles-config
 
 echo "Validation summary: $pass_count passed, $fail_count failed."
