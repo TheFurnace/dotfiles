@@ -21,7 +21,7 @@ in
           eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init bash --config ~/.config/oh-my-posh/themes/lambda.omp.json)"
         fi
 
-        ${pkgs.nix-your-shell}/bin/nix-your-shell bash | source /dev/stdin
+        source <(${pkgs.nix-your-shell}/bin/nix-your-shell bash)
       '';
     };
 
