@@ -77,7 +77,7 @@ SCRIPT
 cat >"$CONTAINER_HOME/validate-pwsh.ps1" <<'SCRIPT'
 $ErrorActionPreference = "Stop"
 
-Get-Command nix, oh-my-posh, Set-PoshPrompt | Out-Null
+Get-Command nix, oh-my-posh | Out-Null
 
 if (-not ((Get-Content Function:\prompt -Raw) -match "oh-my-posh")) {
     throw "PowerShell prompt was not initialized by oh-my-posh."
