@@ -7,7 +7,8 @@ container_user="dotfiles"
 container_home="/home/$container_user"
 container_runtime_dir="/tmp/runtime-$container_user"
 container_script_path="/usr/local/bin/run-user-flow.sh"
-container_path="$container_home/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+host_nix_profile="${HOME}/.nix-profile"
+container_path="$container_home/.nix-profile/bin:$host_nix_profile/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ubuntu_release="${UBUNTU_RELEASE:-noble}"
 ubuntu_mirror="${UBUNTU_MIRROR:-https://archive.ubuntu.com/ubuntu/}"
 rootfs="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nspawn.XXXXXX")"
@@ -19,6 +20,11 @@ trap cleanup EXIT
 
 if [ ! -d /nix ]; then
   echo "/nix is required before running the nspawn flow." >&2
+  exit 1
+fi
+
+if [ ! -d "$host_nix_profile" ]; then
+  echo "Host Nix profile is required before running the nspawn flow: $host_nix_profile" >&2
   exit 1
 fi
 
@@ -43,10 +49,11 @@ sudo mkdir -p \
   "$rootfs/etc/profile.d" \
   "$rootfs/etc/fish/conf.d" \
   "$rootfs$(dirname "$container_script_path")" \
+  "$rootfs$(dirname "$host_nix_profile")" \
   "$rootfs$(dirname "$repo_root")"
 
-sudo ln -sfn /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh "$rootfs/etc/profile.d/nix.sh"
-sudo ln -sfn /nix/var/nix/profiles/default/etc/profile.d/nix.fish "$rootfs/etc/fish/conf.d/nix.fish"
+sudo ln -sfn "$host_nix_profile/etc/profile.d/nix-daemon.sh" "$rootfs/etc/profile.d/nix.sh"
+sudo ln -sfn "$host_nix_profile/etc/profile.d/nix.fish" "$rootfs/etc/fish/conf.d/nix.fish"
 
 sudo tee "$rootfs$container_script_path" >/dev/null <<'EOF'
 set -euo pipefail
@@ -147,6 +154,7 @@ sudo chmod 755 "$rootfs$container_script_path"
 
 binds=(
   --bind-ro=/nix
+  --bind-ro="$host_nix_profile:$host_nix_profile"
   --bind-ro="$repo_root:$repo_root"
 )
 
