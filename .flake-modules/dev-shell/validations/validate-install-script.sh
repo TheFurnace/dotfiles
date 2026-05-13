@@ -33,8 +33,9 @@ ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 answers_file="$test_root/install-input.txt"
 # Feed more empty responses than the installer currently consumes so it can keep
 # accepting defaults if a prompt or two is added later.
+max_default_responses=16
 {
-  for _ in $(seq 1 16); do
+  for _ in $(seq 1 "$max_default_responses"); do
     printf '\n'
   done
 } >"$answers_file"
