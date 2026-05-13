@@ -19,16 +19,20 @@ if [ -z "$script_bin" ]; then
   echo "Error: script utility not found. Required for install validation." >&2
   exit 1
 fi
-nixpkgs_path="$(
+if ! nixpkgs_path="$(
   cd "$DOTFILES_REPO"
   "$nix_bin" --extra-experimental-features "nix-command flakes" eval --impure --raw --expr 'let flake = builtins.getFlake (toString ./.); in flake.inputs.nixpkgs.outPath'
-)"
+)"; then
+  echo "Error: failed to resolve the flake-pinned nixpkgs path for install validation." >&2
+  exit 1
+fi
 nix_only_bin_dir="$test_root/nix-only-bin"
 mkdir -p "$nix_only_bin_dir"
 ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 
 answers_file="$test_root/install-input.txt"
-# Feed enough empty responses for the installer to accept defaults across its prompts.
+# Feed more empty responses than the installer currently consumes so it can keep
+# accepting defaults if a prompt or two is added later.
 {
   for _ in $(seq 1 16); do
     printf '\n'
