@@ -27,11 +27,16 @@ for command_name in bash cat dirname grep id mktemp mv nix python3 pwd rm sed; d
 done
 
 PATH="$safe_path" command -v nix >/dev/null 2>&1
-! PATH="$safe_path" command -v git >/dev/null 2>&1
-! PATH="$safe_path" command -v home-manager >/dev/null 2>&1
+if PATH="$safe_path" command -v git >/dev/null 2>&1; then
+  exit 1
+fi
+if PATH="$safe_path" command -v home-manager >/dev/null 2>&1; then
+  exit 1
+fi
 
 export INSTALL_SCRIPT="$install_script"
-export INSTALL_SCRIPT_BASH="$(command -v bash)"
+install_script_bash="$(command -v bash)"
+export INSTALL_SCRIPT_BASH="$install_script_bash"
 export INSTALL_TEST_HOME="$test_home"
 export INSTALL_TEST_PATH="$safe_path"
 export INSTALL_TRANSCRIPT="$test_root/install-transcript.txt"
