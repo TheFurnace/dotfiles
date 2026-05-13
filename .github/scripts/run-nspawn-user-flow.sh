@@ -114,10 +114,6 @@ run_as_user() (
 )
 
 run_install_command_args=(
-  setpriv
-  --reuid "$container_user_uid"
-  --regid "$container_user_gid"
-  --init-groups
   /bin/bash
   "$CONTAINER_HOME/run-install.sh"
 )
@@ -137,6 +133,8 @@ script \
   --command "$run_install_command" \
   "$CONTAINER_HOME/install-transcript.txt" \
   <"$CONTAINER_HOME/install-answers.txt"
+
+chown -R "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_HOME"
 
 grep -Fq "Activate this Home Manager configuration now [y/N]:" "$CONTAINER_HOME/install-transcript.txt"
 [ -f "$CONTAINER_HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]
