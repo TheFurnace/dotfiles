@@ -282,4 +282,4 @@ fi
 "${nix_cmd[@]}" shell \
     "$temp_dir#git-cli" \
     "$temp_dir#home-manager-cli" \
-    -c env NIX_CONFIG="$nix_cli_config" home-manager switch --flake "$temp_dir#installer"
+    -c env NIX_CONFIG="$nix_cli_config" home-manager switch -b backup --flake "$temp_dir#installer"

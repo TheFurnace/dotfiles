@@ -14,6 +14,7 @@ in
 
   config = lib.mkIf cfg.enable {
     # Reuse the system pkgs set so Home Manager and NixOS stay aligned.
+    home-manager.backupFileExtension = "backup";
     home-manager.useGlobalPkgs = true;
     home-manager.useUserPackages = true;
     home-manager.users.${cfg.username} = {
