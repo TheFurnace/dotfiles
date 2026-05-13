@@ -3,6 +3,7 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
+bootstrap_git_package="github:NixOS/nixpkgs/nixos-unstable#git"
 default_mutable_checkout_subdir="dotfiles"
 
 resolve_dotfiles_url() {
@@ -85,6 +86,10 @@ escape_sed_replacement() {
 
 escape_for_nix_sed() {
     escape_sed_replacement "$(nix_escape "$1")"
+}
+
+run_with_bootstrap_git() {
+    "${nix_cmd[@]}" shell "$bootstrap_git_package" -c "$@"
 }
 
 validate_local_checkout_path() {
@@ -213,17 +218,17 @@ fi
 echo
 
 echo "Running nix flake check for: $dotfiles_url"
-"${nix_cmd[@]}" flake check "$dotfiles_url"
+run_with_bootstrap_git "${nix_cmd[@]}" flake check "$dotfiles_url"
 
 echo "Building the generated Home Manager activation package..."
-"${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
+run_with_bootstrap_git "${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
 
 if [ "$(prompt_yes_no "Activate this Home Manager configuration now" "false")" != "true" ]; then
     echo "Skipping activation."
     exit 0
 fi
 
-"${nix_cmd[@]}" shell \
+run_with_bootstrap_git "${nix_cmd[@]}" shell \
     "$temp_dir#git-cli" \
     "$temp_dir#home-manager-cli" \
     -c home-manager switch --flake "$temp_dir#installer"
