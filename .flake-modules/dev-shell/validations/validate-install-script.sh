@@ -28,16 +28,12 @@ mkdir -p "$nix_only_bin_dir"
 ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 
 answers_file="$test_root/install-input.txt"
-# Feed six empty responses: one for each of the installer's five configuration prompts,
-# plus one to keep the default no for activation.
-cat >"$answers_file" <<'EOF'
-
-
-
-
-
-
-EOF
+# Feed enough empty responses for the installer to accept defaults across its prompts.
+{
+  for _ in $(seq 1 16); do
+    printf '\n'
+  done
+} >"$answers_file"
 
 install_command=(
   "$nix_bin"
