@@ -6,6 +6,11 @@ nix_cmd=(nix --extra-experimental-features "nix-command flakes")
 current_system_expr='builtins.currentSystem'
 temp_root="${TMPDIR:-/tmp}"
 
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "validate-install-script requires Linux because it relies on util-linux script" >&2
+  exit 1
+fi
+
 test -x "$install_script"
 bash -n "$install_script"
 
@@ -88,7 +93,6 @@ export INSTALL_DEFAULT_USERNAME="testuser"
 export INSTALL_DEFAULT_HOME="$test_home"
 export INSTALL_DEFAULT_STATE_VERSION="25.11"
 export INSTALL_DEFAULT_SYSTEM="$install_default_system"
-install_test_tmpdir="$INSTALL_TEST_HOME"
 
 answers_file="$test_root/install-answers.txt"
 {
@@ -109,7 +113,7 @@ answers_file="$test_root/install-answers.txt"
 printf -v install_command 'env -i HOME=%q PATH=%q TMPDIR=%q USER=%q %q %q' \
   "$INSTALL_TEST_HOME" \
   "$INSTALL_TEST_PATH" \
-  "$install_test_tmpdir" \
+  "$INSTALL_TEST_HOME" \
   "$INSTALL_DEFAULT_USERNAME" \
   "$install_script_bash" \
   "$install_script"
