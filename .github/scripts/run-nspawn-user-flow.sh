@@ -5,8 +5,7 @@ set -euo pipefail
 repo_root="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 container_user="dotfiles"
 container_home="/home/$container_user"
-container_runtime_dir="/tmp/runtime-$container_user"
-container_script_path="/usr/local/bin/run-user-flow.sh"
+container_script_path="/usr/local/bin/prepare-user-flow.sh"
 host_nix_profile="${HOME}/.nix-profile"
 host_user_uid="$(id -u)"
 host_user_gid="$(id -g)"
@@ -14,11 +13,48 @@ container_path="$container_home/.nix-profile/bin:$host_nix_profile/bin:/usr/loca
 ubuntu_release="${UBUNTU_RELEASE:-noble}"
 ubuntu_mirror="${UBUNTU_MIRROR:-https://archive.ubuntu.com/ubuntu/}"
 rootfs="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nspawn.XXXXXX")"
+machine_name="dotfiles-user-flow-$$"
+nspawn_pid=""
 
 cleanup() {
+  if [ -n "$nspawn_pid" ]; then
+    sudo machinectl poweroff "$machine_name" >/dev/null 2>&1 || true
+    wait "$nspawn_pid" || true
+  fi
   sudo rm -rf "$rootfs"
 }
 trap cleanup EXIT
+
+run_in_machine() {
+  sudo systemd-run \
+    --quiet \
+    --wait \
+    --pipe \
+    --collect \
+    --machine="$machine_name" \
+    "$@"
+}
+
+wait_for_machine() {
+  local timeout_seconds="${1:-120}"
+  local deadline=$((SECONDS + timeout_seconds))
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if [ -n "$nspawn_pid" ] && ! kill -0 "$nspawn_pid" >/dev/null 2>&1; then
+      wait "$nspawn_pid"
+      exit 1
+    fi
+
+    if run_in_machine /bin/true >/dev/null 2>&1; then
+      return
+    fi
+
+    sleep 1
+  done
+
+  echo "Timed out waiting for $machine_name to finish booting." >&2
+  exit 1
+}
 
 if [ ! -d /nix ]; then
   echo "/nix is required before running the nspawn flow." >&2
@@ -37,7 +73,7 @@ fi
 
 sudo debootstrap \
   --variant=minbase \
-  --include=ca-certificates,passwd,util-linux \
+  --include=ca-certificates,dbus,passwd,systemd-sysv,util-linux \
   "$ubuntu_release" \
   "$rootfs" \
   "$ubuntu_mirror"
@@ -67,10 +103,7 @@ fi
 useradd --create-home --shell /bin/bash --uid "$HOST_UID" --gid "$HOST_GID" "$CONTAINER_USER"
 container_user_uid="$(id -u "$CONTAINER_USER")"
 container_user_gid="$(id -g "$CONTAINER_USER")"
-
-mkdir -p -m 700 "$CONTAINER_RUNTIME_DIR"
-chown "$container_user_uid:$container_user_gid" "$CONTAINER_RUNTIME_DIR"
-chmod 700 "$CONTAINER_RUNTIME_DIR"
+loginctl enable-linger "$CONTAINER_USER"
 
 # Answers, in order:
 # 1-4) accept username/home/state-version/system defaults
@@ -82,14 +115,38 @@ cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
 #!/bin/bash
 set -euo pipefail
 
-export HOME="$CONTAINER_HOME"
-export LOGNAME="$CONTAINER_USER"
-export PATH="$CONTAINER_PATH"
-export TERM="xterm-256color"
-export USER="$CONTAINER_USER"
-export XDG_RUNTIME_DIR="$CONTAINER_RUNTIME_DIR"
-
 exec bash "$DOTFILES_REPO/install.sh"
+SCRIPT
+
+cat >"$CONTAINER_HOME/run-user-flow.sh" <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+
+: "${DOTFILES_REPO:?}"
+: "${PATH:?}"
+: "${XDG_RUNTIME_DIR:?}"
+
+script \
+  --quiet \
+  --return \
+  --flush \
+  --command "/bin/bash \"$HOME/run-install.sh\"" \
+  "$HOME/install-transcript.txt" \
+  <"$HOME/install-answers.txt"
+
+grep -Fq "Activate this Home Manager configuration now [y/N]:" "$HOME/install-transcript.txt"
+test -d "$XDG_RUNTIME_DIR"
+systemctl --user show-environment >/dev/null
+test -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
+test -f "$HOME/.config/git/config"
+
+fish -lic 'command -sq nix; and command -sq oh-my-posh; and functions -q _omp_hook'
+bash -lic 'command -v nix >/dev/null && command -v oh-my-posh >/dev/null && declare -F _omp_hook >/dev/null'
+pwsh -NoLogo -File "$HOME/validate-pwsh.ps1"
+nvim --headless "+quitall"
+
+test "$(git config --get alias.adog)" = "log --all --decorate --oneline --graph"
+test "$(git config --get core.editor)" = "nvim"
 SCRIPT
 
 cat >"$CONTAINER_HOME/validate-pwsh.ps1" <<'SCRIPT'
@@ -102,59 +159,12 @@ if (-not ((Get-Content Function:\prompt -Raw) -match "oh-my-posh")) {
 }
 SCRIPT
 
-chmod +x "$CONTAINER_HOME/run-install.sh"
+chmod +x "$CONTAINER_HOME/run-install.sh" "$CONTAINER_HOME/run-user-flow.sh"
 chown "$container_user_uid:$container_user_gid" \
   "$CONTAINER_HOME/install-answers.txt" \
   "$CONTAINER_HOME/run-install.sh" \
+  "$CONTAINER_HOME/run-user-flow.sh" \
   "$CONTAINER_HOME/validate-pwsh.ps1"
-
-run_as_user() (
-  export HOME="$CONTAINER_HOME"
-  export LOGNAME="$CONTAINER_USER"
-  export PATH="$CONTAINER_PATH"
-  export TERM="xterm-256color"
-  export USER="$CONTAINER_USER"
-  export XDG_RUNTIME_DIR="$CONTAINER_RUNTIME_DIR"
-
-  exec setpriv --reuid "$container_user_uid" --regid "$container_user_gid" --init-groups "$@"
-)
-
-run_install_command_args=(
-  setpriv
-  --reuid "$container_user_uid"
-  --regid "$container_user_gid"
-  --init-groups
-  /bin/bash
-  "$CONTAINER_HOME/run-install.sh"
-)
-run_install_command=""
-for run_install_arg in "${run_install_command_args[@]}"; do
-  printf -v quoted_run_install_arg '%q' "$run_install_arg"
-  if [ -n "$run_install_command" ]; then
-    run_install_command+=" "
-  fi
-  run_install_command+="$quoted_run_install_arg"
-done
-
-script \
-  --quiet \
-  --return \
-  --flush \
-  --command "$run_install_command" \
-  "$CONTAINER_HOME/install-transcript.txt" \
-  <"$CONTAINER_HOME/install-answers.txt"
-
-grep -Fq "Activate this Home Manager configuration now [y/N]:" "$CONTAINER_HOME/install-transcript.txt"
-[ -f "$CONTAINER_HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]
-[ -f "$CONTAINER_HOME/.config/git/config" ]
-
-run_as_user fish -lic 'command -sq nix; and command -sq oh-my-posh; and functions -q _omp_hook'
-run_as_user bash -lic 'command -v nix >/dev/null && command -v oh-my-posh >/dev/null && declare -F _omp_hook >/dev/null'
-run_as_user pwsh -NoLogo -File "$CONTAINER_HOME/validate-pwsh.ps1"
-run_as_user nvim --headless '+quitall'
-
-[ "$(run_as_user git config --get alias.adog)" = "log --all --decorate --oneline --graph" ]
-[ "$(run_as_user git config --get core.editor)" = "nvim" ]
 EOF
 sudo chmod 755 "$rootfs$container_script_path"
 
@@ -168,17 +178,42 @@ if [ -d /etc/nix ]; then
   binds+=(--bind-ro=/etc/nix)
 fi
 
+if [ -d /etc/ssl/certs ]; then
+  binds+=(--bind-ro=/etc/ssl/certs)
+fi
+
 sudo systemd-nspawn \
   --quiet \
-  --console=pipe \
+  --boot \
+  --console=passive \
+  --machine="$machine_name" \
   --timezone=off \
   --directory="$rootfs" \
   "${binds[@]}" \
   --setenv=DOTFILES_REPO="$repo_root" \
   --setenv=CONTAINER_HOME="$container_home" \
   --setenv=CONTAINER_PATH="$container_path" \
-  --setenv=CONTAINER_RUNTIME_DIR="$container_runtime_dir" \
   --setenv=CONTAINER_USER="$container_user" \
   --setenv=HOST_UID="$host_user_uid" \
   --setenv=HOST_GID="$host_user_gid" \
-  /bin/bash "$container_script_path"
+  --setenv=NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+  --setenv=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+  &
+nspawn_pid=$!
+
+wait_for_machine
+run_in_machine /bin/bash "$container_script_path"
+sudo machinectl shell \
+  --quiet \
+  --uid="$container_user" \
+  --setenv=DOTFILES_REPO="$repo_root" \
+  --setenv=PATH="$container_path" \
+  --setenv=TERM="xterm-256color" \
+  --setenv=NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+  --setenv=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+  "$machine_name" \
+  /bin/bash "$container_home/run-user-flow.sh"
+
+sudo machinectl poweroff "$machine_name" >/dev/null
+wait "$nspawn_pid"
+nspawn_pid=""
