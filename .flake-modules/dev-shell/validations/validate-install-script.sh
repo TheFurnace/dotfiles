@@ -23,7 +23,9 @@ nixpkgs_path="$(
   cd "$DOTFILES_REPO"
   "$nix_bin" --extra-experimental-features "nix-command flakes" eval --impure --raw --expr 'let flake = builtins.getFlake (toString ./.); in flake.inputs.nixpkgs.outPath'
 )"
-nix_path="$(dirname "$nix_bin")"
+nix_only_bin_dir="$test_root/nix-only-bin"
+mkdir -p "$nix_only_bin_dir"
+ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 
 answers_file="$test_root/install-input.txt"
 # Feed six empty responses: one for each of the installer's five configuration prompts,
@@ -53,7 +55,7 @@ printf -v install_command_string '%q ' "${install_command[@]}"
 
 env -i \
   HOME="$test_root/home" \
-  PATH="$nix_path" \
+  PATH="$nix_only_bin_dir" \
   TERM="${TERM:-xterm}" \
   TMPDIR="$test_root" \
   USER="${USER:-$(id -un)}" \
