@@ -2,6 +2,7 @@
 set -euo pipefail
 
 install_script="$DOTFILES_REPO/install.sh"
+nix_cmd=(nix --extra-experimental-features "nix-command flakes")
 
 test -x "$install_script"
 bash -n "$install_script"
@@ -69,9 +70,7 @@ assert_command_absent git
 assert_command_absent home-manager
 
 install_default_system="$(
-  PATH="$safe_path" nix \
-    --extra-experimental-features "nix-command flakes" \
-    eval --impure --raw --expr 'builtins.currentSystem'
+  PATH="$safe_path" "${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem'
 )"
 
 export INSTALL_SCRIPT="$install_script"
