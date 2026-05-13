@@ -67,8 +67,6 @@ in
     scripts = mkDotfilesShell "scripts" (with pkgs; [
       bash
       nix
-      validations.validationPackages.validateInstallScript
-      validations.validationPackages.validateInstallScriptNixOnly
       validations.validationPackages.validateSetupScript
     ]);
 
