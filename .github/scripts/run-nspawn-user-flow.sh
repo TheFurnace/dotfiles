@@ -50,7 +50,7 @@ set -euo pipefail
 
 useradd --create-home --shell /bin/bash "$CONTAINER_USER"
 
-mkdir -p "$CONTAINER_RUNTIME_DIR"
+mkdir -p -m 700 "$CONTAINER_RUNTIME_DIR"
 chown "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_RUNTIME_DIR"
 chmod 700 "$CONTAINER_RUNTIME_DIR"
 
