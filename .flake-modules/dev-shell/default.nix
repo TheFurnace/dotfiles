@@ -31,47 +31,6 @@ in
     default = mkDotfilesShell "default" (with pkgs; [
       just
       nix
-    ]);
-
-    fish = mkDotfilesShell "fish" (with pkgs; [
-      fish
-      nix-your-shell
-      oh-my-posh
-      zoxide
-      validations.validationPackages.validateFishConfig
-    ]);
-
-    neovim = mkDotfilesShell "neovim" (with pkgs; [
-      neovim
-      tree-sitter
-      validations.validationPackages.validateNeovimConfig
-    ]);
-
-    oh-my-posh = mkDotfilesShell "oh-my-posh" (with pkgs; [
-      oh-my-posh
-      validations.validationPackages.validateOhMyPoshConfig
-    ]);
-
-    kitty = mkDotfilesShell "kitty" (with pkgs; [
-      kitty
-      validations.validationPackages.validateKittyConfig
-    ]);
-
-    powershell = mkDotfilesShell "powershell" (with pkgs; [
-      oh-my-posh
-      powershell
-      zoxide
-      validations.validationPackages.validatePwshConfig
-    ]);
-
-    scripts = mkDotfilesShell "scripts" (with pkgs; [
-      bash
-      nix
-      validations.validationPackages.validateInstallScript
-      validations.validationPackages.validateSetupScript
-    ]);
-
-    validation = mkDotfilesShell "validation" (with pkgs; [
       validations.validationPackages.validateDotfilesConfig
     ]);
   };
