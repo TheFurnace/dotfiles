@@ -9,6 +9,7 @@ container_runtime_dir="/tmp/runtime-$container_user"
 container_script_path="/tmp/run-user-flow.sh"
 container_path="$container_home/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ubuntu_release="${UBUNTU_RELEASE:-noble}"
+ubuntu_mirror="${UBUNTU_MIRROR:-https://archive.ubuntu.com/ubuntu/}"
 rootfs="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nspawn.XXXXXX")"
 
 cleanup() {
@@ -31,7 +32,7 @@ sudo debootstrap \
   --include=ca-certificates,passwd,util-linux \
   "$ubuntu_release" \
   "$rootfs" \
-  http://archive.ubuntu.com/ubuntu/
+  "$ubuntu_mirror"
 
 # Write the container setup script into the rootfs so nspawn does not need an
 # interactive stdin stream to start the flow.
