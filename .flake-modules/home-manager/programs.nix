@@ -1,5 +1,5 @@
 { nix-index-database }:
-{ config, lib, osConfig ? null, ... }:
+{ config, lib, osConfig ? null, pkgs, ... }:
 let
   cfg = config.dotfiles;
   isStandaloneHomeManager = osConfig == null;
