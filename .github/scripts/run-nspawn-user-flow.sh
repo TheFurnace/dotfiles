@@ -104,13 +104,19 @@ run_as_user() (
   exec setpriv --reuid "$container_user_uid" --regid "$container_user_gid" --init-groups "$@"
 )
 
-printf -v run_install_command '%q ' \
+run_install_command=""
+for run_install_arg in \
   setpriv \
   --reuid "$container_user_uid" \
   --regid "$container_user_gid" \
   --init-groups \
-  "$CONTAINER_HOME/run-install.sh"
-run_install_command="${run_install_command% }"
+  "$CONTAINER_HOME/run-install.sh"; do
+  printf -v quoted_run_install_arg '%q' "$run_install_arg"
+  if [ -n "$run_install_command" ]; then
+    run_install_command+=" "
+  fi
+  run_install_command+="$quoted_run_install_arg"
+done
 
 script \
   --quiet \
