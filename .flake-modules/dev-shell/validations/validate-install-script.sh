@@ -15,6 +15,20 @@ trap cleanup EXIT
 test_home="$test_root/home"
 mkdir -p "$test_home"
 
+required_path_commands=(
+  bash
+  cat
+  dirname
+  grep
+  id
+  mktemp
+  mv
+  nix
+  python3
+  rm
+  sed
+)
+
 safe_path=""
 append_path_dir() {
   local dir="$1"
@@ -24,7 +38,7 @@ append_path_dir() {
   esac
 }
 
-for command_name in bash cat dirname grep id mktemp mv nix python3 rm sed; do
+for command_name in "${required_path_commands[@]}"; do
   resolved_path="$(type -P "$command_name" || true)"
   if [[ -n "$resolved_path" && "$resolved_path" == /* ]]; then
     append_path_dir "$(dirname "$resolved_path")"

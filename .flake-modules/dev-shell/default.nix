@@ -71,8 +71,8 @@ in
       validations.validationPackages.validateSetupScript
     ]);
 
-    validation = mkDotfilesShell "validation" [
+    validation = mkDotfilesShell "validation" (with pkgs; [
       validations.validationPackages.validateDotfilesConfig
-    ];
+    ]);
   };
 }
