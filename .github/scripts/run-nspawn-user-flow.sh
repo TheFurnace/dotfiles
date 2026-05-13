@@ -61,7 +61,7 @@ sudo tee "$rootfs$container_script_path" >/dev/null <<'EOF'
 set -euo pipefail
 
 if ! getent group "$HOST_GID" >/dev/null; then
-  groupadd --gid "$HOST_GID" "$CONTAINER_USER"
+  groupadd --gid "$HOST_GID" "${CONTAINER_USER}-host"
 fi
 
 useradd --create-home --shell /bin/bash --uid "$HOST_UID" --gid "$HOST_GID" "$CONTAINER_USER"
