@@ -27,7 +27,6 @@ required_path_commands=(
   mktemp
   mv
   nix
-  python3
   rm
   sed
 )
@@ -82,7 +81,6 @@ install_default_system="$(
 
 export INSTALL_SCRIPT="$install_script"
 install_script_bash="$(command -v bash)"
-export INSTALL_SCRIPT_BASH="$install_script_bash"
 export INSTALL_TEST_HOME="$test_home"
 export INSTALL_TEST_PATH="$safe_path"
 export INSTALL_TRANSCRIPT="$test_root/install-transcript.txt"
@@ -91,7 +89,24 @@ export INSTALL_DEFAULT_HOME="$test_home"
 export INSTALL_DEFAULT_STATE_VERSION="25.11"
 export INSTALL_DEFAULT_SYSTEM="$install_default_system"
 
-python3 "$DOTFILES_REPO/.flake-modules/dev-shell/validations/validate-install-script.py"
+answers_file="$test_root/install-answers.txt"
+cat >"$answers_file" <<'EOF'
+
+
+
+
+n
+n
+EOF
+
+printf -v install_command 'env -i HOME=%q PATH=%q TMPDIR=%q USER=%q %q %q' \
+  "$INSTALL_TEST_HOME" \
+  "$INSTALL_TEST_PATH" \
+  "$INSTALL_TEST_HOME" \
+  "$INSTALL_DEFAULT_USERNAME" \
+  "$install_script_bash" \
+  "$install_script"
+script --quiet --return --flush --command "$install_command" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null
 
 transcript="$INSTALL_TRANSCRIPT"
 
