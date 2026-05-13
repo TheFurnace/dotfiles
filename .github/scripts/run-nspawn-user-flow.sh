@@ -41,7 +41,9 @@ wait_for_machine() {
 
   while [ "$SECONDS" -lt "$deadline" ]; do
     if [ -n "$nspawn_pid" ] && ! kill -0 "$nspawn_pid" >/dev/null 2>&1; then
-      wait "$nspawn_pid"
+      local wait_status=0
+      wait "$nspawn_pid" || wait_status=$?
+      echo "$machine_name exited unexpectedly with status $wait_status." >&2
       exit 1
     fi
 
