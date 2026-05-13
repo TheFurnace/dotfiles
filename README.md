@@ -190,7 +190,7 @@ The installer:
 - uses `nix shell` to provide `home-manager` during activation when it is not already installed
 - runs `nix flake check` for this repo
 - builds the generated Home Manager activation package
-- asks for confirmation before running `home-manager switch`
+- asks for confirmation before running `home-manager switch -b backup`
 
 ### Example
 
@@ -268,7 +268,7 @@ Apply it with:
 
 ```bash
 git add -A
-home-manager switch --flake .#ferndq
+home-manager switch -b backup --flake .#ferndq
 ```
 
 When fish is your login shell in standalone Home Manager mode, `programs.fish` ensures the Home Manager profile is on `PATH` automatically.
@@ -292,7 +292,7 @@ This flake exposes a generic standalone example configuration at `.#example`:
 ```bash
 git add -A
 nix flake check
-home-manager switch --flake .#example
+home-manager switch -b backup --flake .#example
 ```
 
 Treat that built-in output as an example. For real usage, standalone consumption is better done with `dotfiles.lib.mkHomeConfiguration`, which lets another flake create a Home Manager configuration with just:
