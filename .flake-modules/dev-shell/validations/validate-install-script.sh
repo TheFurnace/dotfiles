@@ -15,7 +15,10 @@ script_bin="$(command -v script || true)"
 if [ -z "$script_bin" ] && [ -x /usr/bin/script ]; then
   script_bin=/usr/bin/script
 fi
-test -n "$script_bin"
+if [ -z "$script_bin" ]; then
+  echo "Error: script utility not found. Required for install validation." >&2
+  exit 1
+fi
 nixpkgs_path="$(
   cd "$DOTFILES_REPO"
   "$nix_bin" --extra-experimental-features "nix-command flakes" eval --impure --raw --expr 'let flake = builtins.getFlake (toString ./.); in flake.inputs.nixpkgs.outPath'
