@@ -3,11 +3,12 @@ set -euo pipefail
 
 install_script="$DOTFILES_REPO/install.sh"
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
+temp_root="${TMPDIR:-$HOME}"
 
 test -x "$install_script"
 bash -n "$install_script"
 
-test_root="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-install-validate.XXXXXX")"
+test_root="$(mktemp -d "$temp_root/dotfiles-install-validate.XXXXXX")"
 cleanup() {
   rm -rf "$test_root"
 }
