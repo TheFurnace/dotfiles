@@ -3,7 +3,7 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
-bootstrap_git_package="github:NixOS/nixpkgs/nixos-unstable#git"
+bootstrap_git_package="github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa#git"
 default_mutable_checkout_subdir="dotfiles"
 
 resolve_dotfiles_url() {
