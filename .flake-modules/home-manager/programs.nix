@@ -1,5 +1,5 @@
 { nix-index-database }:
-{ config, lib, osConfig ? null, ... }:
+{ config, lib, osConfig ? null, pkgs, ... }:
 let
   cfg = config.dotfiles;
   isStandaloneHomeManager = osConfig == null;
@@ -14,7 +14,16 @@ in
       enable = true;
     };
 
-    programs.bash.enable = true;
+    programs.bash = {
+      enable = true;
+      initExtra = ''
+        if [ -f ~/.config/oh-my-posh/themes/lambda.omp.json ]; then
+          eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init bash --config ~/.config/oh-my-posh/themes/lambda.omp.json)"
+        fi
+
+        source <(${pkgs.nix-your-shell}/bin/nix-your-shell bash)
+      '';
+    };
 
     programs.nix-index-database.comma.enable = true;
 
