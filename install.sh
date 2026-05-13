@@ -48,6 +48,7 @@ ensure_script_dependencies() {
     printf -v bootstrap_command '%q ' env "$bootstrap_guard_var=1" "$bash_bin" "$script_path" "$@"
 
     exec nix-shell \
+        --extra-experimental-features "nix-command flakes" \
         -I "nixpkgs=$nixpkgs_source" \
         -p git nix \
         --run "$bootstrap_command"
