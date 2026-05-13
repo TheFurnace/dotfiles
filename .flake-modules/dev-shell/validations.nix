@@ -60,14 +60,16 @@ let
   };
 in
 {
-  validationPackages = [
-    validateDotfilesConfig
-    validateFishConfig
-    validateInstallScript
-    validateKittyConfig
-    validateNeovimConfig
-    validateOhMyPoshConfig
-    validatePwshConfig
-    validateSetupScript
-  ];
+  validationPackages = {
+    inherit
+      validateDotfilesConfig
+      validateFishConfig
+      validateInstallScript
+      validateKittyConfig
+      validateNeovimConfig
+      validateOhMyPoshConfig
+      validatePwshConfig
+      validateSetupScript
+      ;
+  };
 }
