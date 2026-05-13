@@ -60,6 +60,30 @@ sudo ln -sfn "$host_nix_profile/etc/profile.d/nix.fish" "$rootfs/etc/fish/conf.d
 sudo tee "$rootfs$container_script_path" >/dev/null <<'EOF'
 set -euo pipefail
 
+install_transcript="$CONTAINER_HOME/install-transcript.txt"
+
+assert_transcript_contains() {
+  local expected_text="$1"
+
+  if ! grep -Fq "$expected_text" "$install_transcript"; then
+    echo "Expected install transcript to contain: $expected_text" >&2
+    echo "Install transcript follows:" >&2
+    cat "$install_transcript" >&2
+    exit 1
+  fi
+}
+
+assert_transcript_not_contains() {
+  local unexpected_text="$1"
+
+  if grep -Fq "$unexpected_text" "$install_transcript"; then
+    echo "Install transcript unexpectedly contained: $unexpected_text" >&2
+    echo "Install transcript follows:" >&2
+    cat "$install_transcript" >&2
+    exit 1
+  fi
+}
+
 if ! getent group "$HOST_GID" >/dev/null; then
   groupadd --gid "$HOST_GID" "${CONTAINER_USER}-host"
 fi
@@ -136,15 +160,28 @@ for run_install_arg in "${run_install_command_args[@]}"; do
   run_install_command+="$quoted_run_install_arg"
 done
 
-script \
+echo "Running install validation in a non-booted nspawn container; Home Manager should skip reloadSystemd because no user systemd daemon is expected in CI."
+
+if ! script \
   --quiet \
   --return \
   --flush \
   --command "$run_install_command" \
-  "$CONTAINER_HOME/install-transcript.txt" \
+  "$install_transcript" \
   <"$CONTAINER_HOME/install-answers.txt"
+then
+  echo "install.sh validation command failed; transcript follows:" >&2
+  cat "$install_transcript" >&2
+  exit 1
+fi
 
-grep -Fq "Activate this Home Manager configuration now [y/N]:" "$CONTAINER_HOME/install-transcript.txt"
+assert_transcript_contains "Activate this Home Manager configuration now [y/N]:"
+assert_transcript_contains "Starting Home Manager activation"
+assert_transcript_contains "Activating reloadSystemd"
+assert_transcript_contains "User systemd daemon not running. Skipping reload."
+assert_transcript_not_contains "Failed to connect to bus"
+assert_transcript_not_contains "System has not been booted with systemd"
+
 [ -f "$CONTAINER_HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]
 [ -f "$CONTAINER_HOME/.config/git/config" ]
 
