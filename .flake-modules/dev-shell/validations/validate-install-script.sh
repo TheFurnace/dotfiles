@@ -90,14 +90,20 @@ export INSTALL_DEFAULT_STATE_VERSION="25.11"
 export INSTALL_DEFAULT_SYSTEM="$install_default_system"
 
 answers_file="$test_root/install-answers.txt"
-cat >"$answers_file" <<'EOF'
-
-
-
-
-n
-n
-EOF
+{
+  # Username
+  printf '\n'
+  # Home directory
+  printf '\n'
+  # Home Manager state version
+  printf '\n'
+  # System
+  printf '\n'
+  # Enable mutable mode
+  printf 'n\n'
+  # Activate this Home Manager configuration now
+  printf 'n\n'
+} >"$answers_file"
 
 printf -v install_command 'env -i HOME=%q PATH=%q TMPDIR=%q USER=%q %q %q' \
   "$INSTALL_TEST_HOME" \
@@ -106,11 +112,20 @@ printf -v install_command 'env -i HOME=%q PATH=%q TMPDIR=%q USER=%q %q %q' \
   "$INSTALL_DEFAULT_USERNAME" \
   "$install_script_bash" \
   "$install_script"
-script --quiet --return --flush --command "$install_command" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null
+if ! script --quiet --return --flush --command "$install_command" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null; then
+  echo "install.sh validation command failed; transcript follows:" >&2
+  cat "$INSTALL_TRANSCRIPT" >&2
+  exit 1
+fi
 
 transcript="$INSTALL_TRANSCRIPT"
 
 grep -Fq "Installing standalone Home Manager config from:" "$transcript"
+grep -Fq "Username [$INSTALL_DEFAULT_USERNAME]:" "$transcript"
+grep -Fq "Home directory [$INSTALL_DEFAULT_HOME]:" "$transcript"
+grep -Fq "Home Manager state version [$INSTALL_DEFAULT_STATE_VERSION]:" "$transcript"
+grep -Fq "System [$INSTALL_DEFAULT_SYSTEM]:" "$transcript"
+grep -Fq "Enable mutable mode [y/N]:" "$transcript"
 grep -Fq "Configuration summary:" "$transcript"
 grep -Fq "username:       $INSTALL_DEFAULT_USERNAME" "$transcript"
 grep -Fq "home directory: $INSTALL_DEFAULT_HOME" "$transcript"
@@ -119,4 +134,5 @@ grep -Fq "system:         $INSTALL_DEFAULT_SYSTEM" "$transcript"
 grep -Fq "mutable:        false" "$transcript"
 grep -Fq "Running nix flake check for: path:$DOTFILES_REPO" "$transcript"
 grep -Fq "Building the generated Home Manager activation package..." "$transcript"
+grep -Fq "Activate this Home Manager configuration now [y/N]:" "$transcript"
 grep -Fq "Skipping activation." "$transcript"
