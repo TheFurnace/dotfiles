@@ -3,6 +3,10 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
+nix_cli_config='experimental-features = nix-command flakes'
+if [ -n "${NIX_CONFIG:-}" ]; then
+    printf -v nix_cli_config '%s\n%s' "$NIX_CONFIG" "$nix_cli_config"
+fi
 default_mutable_checkout_subdir="dotfiles"
 bootstrap_guard_var="DOTFILES_INSTALL_BOOTSTRAPPED"
 
@@ -278,4 +282,4 @@ fi
 "${nix_cmd[@]}" shell \
     "$temp_dir#git-cli" \
     "$temp_dir#home-manager-cli" \
-    -c home-manager switch --flake "$temp_dir#installer"
+    -c env NIX_CONFIG="$nix_cli_config" home-manager switch --flake "$temp_dir#installer"
