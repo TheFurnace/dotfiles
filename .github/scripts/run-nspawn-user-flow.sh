@@ -127,6 +127,12 @@ set -euo pipefail
 : "${DOTFILES_REPO:?}"
 : "${PATH:?}"
 : "${XDG_RUNTIME_DIR:?}"
+: "${HOME:?}"
+
+if [[ "$HOME" != "/home/dotfiles" ]]; then
+  printf 'Expected HOME to be %s, got %s\n' "/home/dotfiles" "$HOME" >&2
+  exit 1
+fi
 
 script \
   --quiet \
