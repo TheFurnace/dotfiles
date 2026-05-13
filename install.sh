@@ -3,8 +3,6 @@
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
-# Pinned to the flake.lock nixpkgs revision so the bootstrap git shell stays reproducible.
-bootstrap_git_package="github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa#git"
 default_mutable_checkout_subdir="dotfiles"
 
 resolve_dotfiles_url() {
@@ -28,6 +26,17 @@ nix_escape() {
     value="${value//\"/\\\"}"
     value="${value//\$\{/\\\$\{}"
     printf '%s' "$value"
+}
+
+resolve_bootstrap_git_package() {
+    local flake_ref="$1"
+    local flake_ref_escaped bootstrap_git_expr
+
+    flake_ref_escaped="$(nix_escape "$flake_ref")"
+    printf -v bootstrap_git_expr \
+        'let flake = builtins.getFlake "%s"; in (toString flake.inputs.nixpkgs.outPath) + "#git"' \
+        "$flake_ref_escaped"
+    "${nix_cmd[@]}" eval --impure --raw --expr "$bootstrap_git_expr"
 }
 
 prompt_with_default() {
@@ -112,6 +121,10 @@ default_home="${HOME:-/home/$default_username}"
 default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
 default_state_version="25.11"
 dotfiles_url="$(resolve_dotfiles_url)"
+if ! bootstrap_git_package="$(resolve_bootstrap_git_package "$dotfiles_url")"; then
+    echo "Failed to resolve the bootstrap git package from the selected dotfiles flake: $dotfiles_url" >&2
+    exit 1
+fi
 
 echo "Installing standalone Home Manager config from:"
 echo "  $dotfiles_url"

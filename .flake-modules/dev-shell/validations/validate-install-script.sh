@@ -11,7 +11,7 @@ cleanup() {
 trap cleanup EXIT
 
 nix_bin="$(command -v nix)"
-script_bin="$(command -v script || true)"
+script_bin="$(command -v script)" || script_bin=""
 if [ -z "$script_bin" ] && [ -x /usr/bin/script ]; then
   script_bin=/usr/bin/script
 fi
@@ -19,12 +19,13 @@ if [ -z "$script_bin" ]; then
   echo "Error: script utility not found. Required for install validation." >&2
   exit 1
 fi
+nixpkgs_out_path_expr='let flake = builtins.getFlake (toString ./.); in flake.inputs.nixpkgs.outPath'
 # Resolve the exact nixpkgs tree pinned by this checkout so the validation can
 # provide bootstrap tools from the same flake inputs. This local checkout lookup
 # needs an impure evaluation because the path is discovered from DOTFILES_REPO.
 if ! nixpkgs_path="$(
   cd "$DOTFILES_REPO"
-  "$nix_bin" --extra-experimental-features "nix-command flakes" eval --impure --raw --expr 'let flake = builtins.getFlake (toString ./.); in flake.inputs.nixpkgs.outPath'
+  "$nix_bin" --extra-experimental-features "nix-command flakes" eval --impure --raw --expr "$nixpkgs_out_path_expr"
 )"; then
   echo "Error: failed to resolve the flake-pinned nixpkgs path for install validation." >&2
   exit 1
@@ -36,7 +37,9 @@ ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 answers_file="$test_root/install-input.txt"
 # Feed more empty responses than the installer currently consumes so it can keep
 # accepting defaults if a prompt or two is added later.
-current_default_prompt_count=6
+total_prompt_count="$(grep -Ec 'prompt_(with_default|yes_no) "' "$install_script")"
+conditional_mutable_path_prompt_count="$(grep -Ec 'prompt_with_default "Mutable checkout path"' "$install_script")"
+current_default_prompt_count=$((total_prompt_count - conditional_mutable_path_prompt_count))
 response_headroom=10
 max_default_responses=$((current_default_prompt_count + response_headroom))
 {
