@@ -21,7 +21,9 @@ cleanup() {
 trap cleanup EXIT
 
 test_home="$test_root/home"
+install_test_tmpdir="$test_root/tmp"
 mkdir -p "$test_home"
+mkdir -p "$install_test_tmpdir"
 
 required_path_commands=(
   bash
@@ -110,16 +112,22 @@ answers_file="$test_root/install-answers.txt"
   printf 'n\n'
 } >"$answers_file"
 
-printf -v install_command 'env -i HOME=%q PATH=%q TMPDIR=%q USER=%q %q %q' \
-  "$INSTALL_TEST_HOME" \
-  "$INSTALL_TEST_PATH" \
-  "$INSTALL_TEST_HOME" \
-  "$INSTALL_DEFAULT_USERNAME" \
-  "$install_script_bash" \
-  "$install_script"
+install_command_script="$test_root/run-install-command.sh"
+cat >"$install_command_script" <<EOF
+#!/usr/bin/env bash
+exec env -i \
+  HOME=$(printf '%q' "$INSTALL_TEST_HOME") \
+  PATH=$(printf '%q' "$INSTALL_TEST_PATH") \
+  TMPDIR=$(printf '%q' "$install_test_tmpdir") \
+  USER=$(printf '%q' "$INSTALL_DEFAULT_USERNAME") \
+  $(printf '%q' "$install_script_bash") \
+  $(printf '%q' "$install_script")
+EOF
+chmod +x "$install_command_script"
+
 # The validation shell is Linux-only, so use util-linux script to provide a PTY
-# while keeping the install command environment restricted to the sanitized PATH.
-if ! script --quiet --return --flush --command "$install_command" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null; then
+# while the wrapper script clears the environment and reapplies the sanitized PATH.
+if ! script --quiet --return --flush --command "$install_command_script" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null; then
   echo "install.sh validation command failed; transcript follows:" >&2
   cat "$INSTALL_TRANSCRIPT" >&2
   exit 1
