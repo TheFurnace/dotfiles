@@ -21,6 +21,11 @@ if [ ! -d /nix ]; then
   exit 1
 fi
 
+if [ -r /etc/os-release ]; then
+  # shellcheck disable=SC1091
+  . /etc/os-release
+fi
+
 sudo debootstrap \
   --variant=minbase \
   --include=ca-certificates,passwd,util-linux \
@@ -28,6 +33,8 @@ sudo debootstrap \
   "$rootfs" \
   http://archive.ubuntu.com/ubuntu/
 
+# Write the container setup script into the rootfs so nspawn does not need an
+# interactive stdin stream to start the flow.
 sudo mkdir -p \
   "$rootfs/etc/profile.d" \
   "$rootfs/etc/fish/conf.d" \
