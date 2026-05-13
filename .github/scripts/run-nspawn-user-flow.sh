@@ -7,6 +7,7 @@ container_user="dotfiles"
 container_home="/home/$container_user"
 container_runtime_dir="/tmp/runtime-$container_user"
 container_path="$container_home/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ubuntu_release="${UBUNTU_RELEASE:-noble}"
 rootfs="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nspawn.XXXXXX")"
 
 cleanup() {
@@ -24,12 +25,10 @@ if [ -r /etc/os-release ]; then
   . /etc/os-release
 fi
 
-release="${VERSION_CODENAME:-noble}"
-
 sudo debootstrap \
   --variant=minbase \
   --include=ca-certificates,passwd,util-linux \
-  "$release" \
+  "$ubuntu_release" \
   "$rootfs" \
   http://archive.ubuntu.com/ubuntu/
 
@@ -67,8 +66,10 @@ useradd --create-home --shell /bin/bash "$CONTAINER_USER"
 mkdir -p "$CONTAINER_RUNTIME_DIR"
 chown "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_RUNTIME_DIR"
 
-# Accept the four installer defaults, disable mutable mode, then approve
-# activation of the generated Home Manager configuration.
+# Answers, in order:
+# 1-4) accept username/home/state-version/system defaults
+# 5) disable mutable mode
+# 6) approve activation of the generated Home Manager configuration
 printf '\n\n\n\nn\ny\n' >"$CONTAINER_HOME/install-answers.txt"
 
 cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
@@ -121,6 +122,8 @@ run_as_user \
   <"$CONTAINER_HOME/install-answers.txt"
 
 grep -Fq "Activate this Home Manager configuration now [y/N]:" "$CONTAINER_HOME/install-transcript.txt"
+[ -f "$CONTAINER_HOME/.config/powershell/Microsoft.PowerShell_profile.ps1" ]
+[ -f "$CONTAINER_HOME/.config/git/config" ]
 
 run_as_user fish -lic 'command -sq nix; and command -sq oh-my-posh; and functions -q _omp_hook'
 run_as_user bash -lic 'command -v nix >/dev/null && command -v oh-my-posh >/dev/null && declare -F _omp_hook >/dev/null'
