@@ -38,6 +38,25 @@ append_path_dir() {
   esac
 }
 
+assert_command_present() {
+  local command_name="$1"
+  if ! PATH="$safe_path" command -v "$command_name" >/dev/null 2>&1; then
+    echo "Expected $command_name to be available in sanitized PATH: $safe_path" >&2
+    exit 1
+  fi
+}
+
+assert_command_absent() {
+  local command_name="$1"
+  local command_path
+
+  if command_path="$(PATH="$safe_path" command -v "$command_name" 2>/dev/null)"; then
+    echo "Expected $command_name to be absent from sanitized PATH, found at: $command_path" >&2
+    echo "Sanitized PATH: $safe_path" >&2
+    exit 1
+  fi
+}
+
 for command_name in "${required_path_commands[@]}"; do
   resolved_path="$(type -P "$command_name" || true)"
   if [[ -n "$resolved_path" && "$resolved_path" == /* ]]; then
@@ -45,22 +64,9 @@ for command_name in "${required_path_commands[@]}"; do
   fi
 done
 
-if ! PATH="$safe_path" command -v nix >/dev/null 2>&1; then
-  echo "Expected nix to be available in sanitized PATH: $safe_path" >&2
-  exit 1
-fi
-
-if git_path="$(PATH="$safe_path" command -v git 2>/dev/null)"; then
-  echo "Expected git to be absent from sanitized PATH, found at: $git_path" >&2
-  echo "Sanitized PATH: $safe_path" >&2
-  exit 1
-fi
-
-if home_manager_path="$(PATH="$safe_path" command -v home-manager 2>/dev/null)"; then
-  echo "Expected home-manager to be absent from sanitized PATH, found at: $home_manager_path" >&2
-  echo "Sanitized PATH: $safe_path" >&2
-  exit 1
-fi
+assert_command_present nix
+assert_command_absent git
+assert_command_absent home-manager
 
 install_default_system="$(
   PATH="$safe_path" nix \
