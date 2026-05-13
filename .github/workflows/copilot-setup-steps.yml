@@ -16,5 +16,4 @@ jobs:
         uses: nixbuild/nix-quick-install-action@v34
       - name: Initialize dev shell
         run: |
-          nix develop .#default --command bash -lc 'command -v nix just'
-          nix develop .#validation --command bash -lc 'command -v validate-dotfiles-config'
+          nix develop .#default --command bash -lc 'command -v nix validate-dotfiles-config'
