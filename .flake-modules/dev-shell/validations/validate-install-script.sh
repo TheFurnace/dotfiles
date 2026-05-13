@@ -19,6 +19,9 @@ if [ -z "$script_bin" ]; then
   echo "Error: script utility not found. Required for install validation." >&2
   exit 1
 fi
+# Resolve the exact nixpkgs tree pinned by this checkout so the validation can
+# provide bootstrap tools from the same flake inputs. This local checkout lookup
+# needs an impure evaluation because the path is discovered from DOTFILES_REPO.
 if ! nixpkgs_path="$(
   cd "$DOTFILES_REPO"
   "$nix_bin" --extra-experimental-features "nix-command flakes" eval --impure --raw --expr 'let flake = builtins.getFlake (toString ./.); in flake.inputs.nixpkgs.outPath'
@@ -32,7 +35,8 @@ ln -s "$nix_bin" "$nix_only_bin_dir/nix"
 
 answers_file="$test_root/install-input.txt"
 # Feed more empty responses than the installer currently consumes so it can keep
-# accepting defaults if a prompt or two is added later.
+# accepting defaults if a prompt or two is added later. The installer currently
+# uses six defaulted prompts in this non-activation path, so 16 leaves headroom.
 max_default_responses=16
 {
   for _ in $(seq 1 "$max_default_responses"); do
