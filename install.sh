@@ -103,7 +103,6 @@ validate_local_checkout_path() {
 
 default_username="${USER:-$(id -un)}"
 default_home="${HOME:-/home/$default_username}"
-default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
 default_state_version="25.11"
 dotfiles_url="$(resolve_dotfiles_url)"
 
@@ -114,6 +113,7 @@ echo
 username="$(prompt_with_default "Username" "$default_username")"
 home_directory="$(prompt_with_default "Home directory" "$default_home")"
 state_version="$(prompt_with_default "Home Manager state version" "$default_state_version")"
+default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
 system="$(prompt_with_default "System" "$default_system")"
 mutable="$(prompt_yes_no "Enable mutable mode" "false")"
 local_path=""
@@ -218,7 +218,8 @@ echo "Running nix flake check for: $dotfiles_url"
 echo "Building the generated Home Manager activation package..."
 "${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
 
-if [ "$(prompt_yes_no "Activate this Home Manager configuration now" "false")" != "true" ]; then
+activate="$(prompt_yes_no "Activate this Home Manager configuration now" "false")"
+if [ "$activate" != "true" ]; then
     echo "Skipping activation."
     exit 0
 fi
