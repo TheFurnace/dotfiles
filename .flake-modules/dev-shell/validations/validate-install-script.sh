@@ -23,7 +23,7 @@ nixpkgs_path="$(
 nix_path="$(dirname "$nix_bin")"
 
 answers_file="$test_root/install-input.txt"
-# Accept the installer's five initial defaults, then answer no to activation.
+# Feed six empty responses: accept the installer's five initial defaults, then keep the default no for activation.
 cat >"$answers_file" <<'EOF'
 
 
