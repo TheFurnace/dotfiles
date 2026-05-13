@@ -64,7 +64,7 @@ chmod 700 "$CONTAINER_RUNTIME_DIR"
 printf '\n\n\n\nn\ny\n' >"$CONTAINER_HOME/install-answers.txt"
 
 cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 
 export HOME="$CONTAINER_HOME"
@@ -109,6 +109,7 @@ run_install_command_args=(
   --reuid "$container_user_uid"
   --regid "$container_user_gid"
   --init-groups
+  /bin/bash
   "$CONTAINER_HOME/run-install.sh"
 )
 run_install_command=""
