@@ -6,6 +6,7 @@ repo_root="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pw
 container_user="dotfiles"
 container_home="/home/$container_user"
 container_runtime_dir="/tmp/runtime-$container_user"
+container_script_path="/tmp/run-user-flow.sh"
 container_path="$container_home/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ubuntu_release="${UBUNTU_RELEASE:-noble}"
 rootfs="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nspawn.XXXXXX")"
@@ -20,11 +21,6 @@ if [ ! -d /nix ]; then
   exit 1
 fi
 
-if [ -r /etc/os-release ]; then
-  # shellcheck disable=SC1091
-  . /etc/os-release
-fi
-
 sudo debootstrap \
   --variant=minbase \
   --include=ca-certificates,passwd,util-linux \
@@ -35,36 +31,20 @@ sudo debootstrap \
 sudo mkdir -p \
   "$rootfs/etc/profile.d" \
   "$rootfs/etc/fish/conf.d" \
+  "$rootfs/tmp" \
   "$rootfs$(dirname "$repo_root")"
 
 sudo ln -sfn /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh "$rootfs/etc/profile.d/nix.sh"
 sudo ln -sfn /nix/var/nix/profiles/default/etc/profile.d/nix.fish "$rootfs/etc/fish/conf.d/nix.fish"
 
-binds=(
-  --bind-ro=/nix
-  --bind-ro="$repo_root:$repo_root"
-)
-
-if [ -d /etc/nix ]; then
-  binds+=(--bind-ro=/etc/nix)
-fi
-
-sudo systemd-nspawn \
-  --quiet \
-  --directory="$rootfs" \
-  "${binds[@]}" \
-  --setenv=DOTFILES_REPO="$repo_root" \
-  --setenv=CONTAINER_HOME="$container_home" \
-  --setenv=CONTAINER_PATH="$container_path" \
-  --setenv=CONTAINER_RUNTIME_DIR="$container_runtime_dir" \
-  --setenv=CONTAINER_USER="$container_user" \
-  /bin/bash <<'EOF'
+sudo tee "$rootfs$container_script_path" >/dev/null <<'EOF'
 set -euo pipefail
 
 useradd --create-home --shell /bin/bash "$CONTAINER_USER"
 
 mkdir -p "$CONTAINER_RUNTIME_DIR"
 chown "$CONTAINER_USER:$CONTAINER_USER" "$CONTAINER_RUNTIME_DIR"
+chmod 700 "$CONTAINER_RUNTIME_DIR"
 
 # Answers, in order:
 # 1-4) accept username/home/state-version/system defaults
@@ -117,6 +97,7 @@ run_as_user \
   script \
   --quiet \
   --return \
+  --flush \
   --command "$CONTAINER_HOME/run-install.sh" \
   "$CONTAINER_HOME/install-transcript.txt" \
   <"$CONTAINER_HOME/install-answers.txt"
@@ -133,3 +114,26 @@ run_as_user nvim --headless '+quitall'
 [ "$(run_as_user git config --get alias.adog)" = "log --all --decorate --oneline --graph" ]
 [ "$(run_as_user git config --get core.editor)" = "nvim" ]
 EOF
+sudo chmod 755 "$rootfs$container_script_path"
+
+binds=(
+  --bind-ro=/nix
+  --bind-ro="$repo_root:$repo_root"
+)
+
+if [ -d /etc/nix ]; then
+  binds+=(--bind-ro=/etc/nix)
+fi
+
+sudo systemd-nspawn \
+  --quiet \
+  --console=pipe \
+  --timezone=off \
+  --directory="$rootfs" \
+  "${binds[@]}" \
+  --setenv=DOTFILES_REPO="$repo_root" \
+  --setenv=CONTAINER_HOME="$container_home" \
+  --setenv=CONTAINER_PATH="$container_path" \
+  --setenv=CONTAINER_RUNTIME_DIR="$container_runtime_dir" \
+  --setenv=CONTAINER_USER="$container_user" \
+  /bin/bash "$container_script_path"
