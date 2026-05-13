@@ -186,7 +186,8 @@ If the machine already has the Nix package manager installed, you can clone this
 The installer:
 
 - prompts for standalone Home Manager settings such as username, home directory, system, state version, and mutable mode
-- uses `nix shell` to provide `git` and `home-manager` when they are not already installed
+- uses `nix-shell` to bootstrap `git` before any flake operations when it is not already installed
+- uses `nix shell` to provide `home-manager` during activation when it is not already installed
 - runs `nix flake check` for this repo
 - builds the generated Home Manager activation package
 - asks for confirmation before running `home-manager switch`

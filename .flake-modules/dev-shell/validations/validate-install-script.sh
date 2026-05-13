@@ -32,6 +32,7 @@ required_path_commands=(
   mktemp
   mv
   nix
+  nix-shell
   rm
   sed
 )

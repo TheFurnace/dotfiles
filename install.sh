@@ -4,6 +4,44 @@ set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
 default_mutable_checkout_subdir="dotfiles"
+bootstrap_guard_var="DOTFILES_INSTALL_BOOTSTRAPPED"
+
+ensure_script_dependencies() {
+    if command -v git >/dev/null 2>&1; then
+        return
+    fi
+
+    if [ "${!bootstrap_guard_var:-0}" = "1" ]; then
+        echo "Failed to bootstrap installer dependencies with nix-shell." >&2
+        exit 1
+    fi
+
+    local bash_bin script_path bootstrap_command nix_shell_expr
+
+    bash_bin="$(command -v bash)"
+    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    printf -v bootstrap_command '%q ' env "$bootstrap_guard_var=1" "$bash_bin" "$script_path" "$@"
+
+    read -r -d '' nix_shell_expr <<'EOF' || true
+let
+  system = builtins.currentSystem;
+  pkgs = (builtins.getFlake "nixpkgs").legacyPackages.${system};
+in
+pkgs.mkShell {
+  packages = [
+    pkgs.git
+    pkgs.nix
+  ];
+}
+EOF
+
+    exec nix-shell \
+        --extra-experimental-features "nix-command flakes" \
+        -E "$nix_shell_expr" \
+        --run "$bootstrap_command"
+}
+
+ensure_script_dependencies "$@"
 
 resolve_dotfiles_url() {
     local script_path script_dir
