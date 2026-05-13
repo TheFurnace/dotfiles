@@ -41,7 +41,7 @@ let
 
   validateInstallScript = pkgs.writeShellApplication {
     name = "validate-install-script";
-    runtimeInputs = [ pkgs.bash pkgs.gnugrep ];
+    runtimeInputs = [ pkgs.bash ];
     text = builtins.readFile ./validations/validate-install-script.sh;
   };
 
