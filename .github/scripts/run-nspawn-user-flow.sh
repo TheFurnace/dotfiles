@@ -6,7 +6,7 @@ repo_root="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pw
 container_user="dotfiles"
 container_home="/home/$container_user"
 container_runtime_dir="/tmp/runtime-$container_user"
-container_script_path="/tmp/run-user-flow.sh"
+container_script_path="/usr/local/bin/run-user-flow.sh"
 container_path="$container_home/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ubuntu_release="${UBUNTU_RELEASE:-noble}"
 ubuntu_mirror="${UBUNTU_MIRROR:-https://archive.ubuntu.com/ubuntu/}"
@@ -35,11 +35,12 @@ sudo debootstrap \
   "$ubuntu_mirror"
 
 # Write the container setup script into the rootfs so nspawn does not need an
-# interactive stdin stream to start the flow.
+# interactive stdin stream to start the flow, and keep it out of /tmp because
+# nspawn can mount a fresh tmpfs there.
 sudo mkdir -p \
   "$rootfs/etc/profile.d" \
   "$rootfs/etc/fish/conf.d" \
-  "$rootfs/tmp" \
+  "$rootfs$(dirname "$container_script_path")" \
   "$rootfs$(dirname "$repo_root")"
 
 sudo ln -sfn /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh "$rootfs/etc/profile.d/nix.sh"
