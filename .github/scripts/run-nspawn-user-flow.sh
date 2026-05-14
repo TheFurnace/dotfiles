@@ -250,13 +250,13 @@ sudo machinectl shell \
   --setenv=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
   "$machine_name" \
   /bin/bash "$container_home/run-user-flow.sh"
-grep -aFq "Running nix flake check for:" "$rootfs$container_home/install-transcript.txt"
-grep -aFq "Building the generated Home Manager activation package..." "$rootfs$container_home/install-transcript.txt"
-grep -aFq "Activate this Home Manager configuration now [y/N]:" "$rootfs$container_home/install-transcript.txt"
-grep -aFq "Starting Home Manager activation" "$rootfs$container_home/install-transcript.txt"
-grep -aFq "Creating home file links in $container_home" "$rootfs$container_home/install-transcript.txt"
-test -f "$rootfs$container_home/.config/powershell/Microsoft.PowerShell_profile.ps1"
-test -f "$rootfs$container_home/.config/git/config"
+run_in_machine grep -aFq "Running nix flake check for:" "$container_home/install-transcript.txt"
+run_in_machine grep -aFq "Building the generated Home Manager activation package..." "$container_home/install-transcript.txt"
+run_in_machine grep -aFq "Activate this Home Manager configuration now [y/N]:" "$container_home/install-transcript.txt"
+run_in_machine grep -aFq "Starting Home Manager activation" "$container_home/install-transcript.txt"
+run_in_machine grep -aFq "Creating home file links in $container_home" "$container_home/install-transcript.txt"
+run_in_machine test -f "$container_home/.config/powershell/Microsoft.PowerShell_profile.ps1"
+run_in_machine test -f "$container_home/.config/git/config"
 
 sudo machinectl poweroff "$machine_name" >/dev/null
 wait "$nspawn_pid"
