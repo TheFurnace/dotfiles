@@ -17,7 +17,7 @@ fi
 resolve_dotfiles_url() {
     local script_path script_dir
 
-    script_path="${BASH_SOURCE[0]-}"
+    script_path="${BASH_SOURCE[0]:-}"
     if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
         script_dir="$(cd "$(dirname "$script_path")" && pwd)"
         if [ -f "$script_dir/flake.nix" ]; then
