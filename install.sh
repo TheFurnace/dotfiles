@@ -8,6 +8,7 @@ if [ -n "${NIX_CONFIG:-}" ]; then
     printf -v nix_cli_config '%s\n%s' "$NIX_CONFIG" "$nix_cli_config"
 fi
 default_mutable_checkout_subdir="dotfiles"
+bootstrap_nixpkgs_source=""
 
 resolve_bootstrap_nixpkgs_source() {
     local lock_path="${1:-}"
@@ -47,14 +48,24 @@ resolve_local_lock_path() {
 }
 
 run_nix_command() {
+    local arg
     local bootstrap_command
+    local -a quoted_args=()
 
     if command -v git >/dev/null 2>&1; then
         "${nix_cmd[@]}" "$@"
         return
     fi
 
-    printf -v bootstrap_command '%q ' "${nix_cmd[@]}" "$@"
+    if [ -z "$bootstrap_nixpkgs_source" ]; then
+        bootstrap_nixpkgs_source="$(resolve_bootstrap_nixpkgs_source "$(resolve_local_lock_path)")"
+    fi
+
+    for arg in "${nix_cmd[@]}" "$@"; do
+        printf -v arg '%q' "$arg"
+        quoted_args+=("$arg")
+    done
+    bootstrap_command="${quoted_args[*]}"
     nix-shell \
         --extra-experimental-features "nix-command flakes" \
         -I "nixpkgs=$bootstrap_nixpkgs_source" \
@@ -65,7 +76,7 @@ run_nix_command() {
 resolve_dotfiles_url() {
     local script_path script_dir
 
-    script_path="${BASH_SOURCE[0]-}"
+    script_path="${BASH_SOURCE[0]:-}"
     if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
         script_dir="$(cd "$(dirname "$script_path")" && pwd)"
         if [ -f "$script_dir/flake.nix" ]; then
@@ -76,8 +87,6 @@ resolve_dotfiles_url() {
 
     printf 'github:TheFurnace/dotfiles\n'
 }
-
-bootstrap_nixpkgs_source="$(resolve_bootstrap_nixpkgs_source "$(resolve_local_lock_path)")"
 
 nix_escape() {
     local value="$1"
