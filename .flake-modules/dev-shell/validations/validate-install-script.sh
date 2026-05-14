@@ -86,8 +86,6 @@ install_default_system="$(
 )"
 
 export INSTALL_SCRIPT="$install_script"
-install_script_bash="$(command -v bash)"
-export INSTALL_SCRIPT_BASH="$install_script_bash"
 export INSTALL_TEST_HOME="$test_home"
 export INSTALL_TEST_PATH="$safe_path"
 export INSTALL_TRANSCRIPT="$test_root/install-transcript.txt"
@@ -120,7 +118,6 @@ exec env -i \
   PATH="$INSTALL_TEST_PATH" \
   TMPDIR="$INSTALL_TEST_HOME" \
   USER="$INSTALL_DEFAULT_USERNAME" \
-  "$INSTALL_SCRIPT_BASH" \
   "$INSTALL_SCRIPT"
 EOF
 chmod +x "$install_command_script"
