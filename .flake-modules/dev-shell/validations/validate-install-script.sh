@@ -23,32 +23,21 @@ bash -n "$install_script"
 required_path_commands=(
   bash
   cat
+  chmod
   dirname
+  env
   id
   mkdir
   mktemp
   nix
   pwd
+  readlink
   rm
 )
 
-safe_path=""
-safe_path_contains_dir() {
-  local dir="$1"
-  case ":$safe_path:" in
-    *":$dir:"*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-append_path_dir() {
-  local dir="$1"
-  if safe_path_contains_dir "$dir"; then
-    return
-  fi
-
-  safe_path="${safe_path:+$safe_path:}$dir"
-}
+safe_bin="$test_root/safe-bin"
+mkdir -p "$safe_bin"
+safe_path="$safe_bin"
 
 assert_command_absent() {
   local command_name="$1"
@@ -64,7 +53,7 @@ assert_command_absent() {
 for command_name in "${required_path_commands[@]}"; do
   resolved_path="$(command -v "$command_name" || true)"
   if [[ -n "$resolved_path" && "$resolved_path" == /* ]]; then
-    append_path_dir "$(dirname "$resolved_path")"
+    ln -s "$resolved_path" "$safe_bin/$command_name"
   fi
 done
 
