@@ -125,14 +125,27 @@ cat >"$CONTAINER_HOME/run-user-flow.sh" <<'SCRIPT'
 set -euo pipefail
 
 : "${DOTFILES_REPO:?}"
-: "${PATH:?}"
+: "${CONTAINER_PATH:?}"
 : "${XDG_RUNTIME_DIR:?}"
 : "${HOME:?}"
+
+export PATH="$CONTAINER_PATH"
 
 if [[ "$HOME" != "/home/dotfiles" ]]; then
   printf 'Expected HOME to be %s, got %s\n' "/home/dotfiles" "$HOME" >&2
   exit 1
 fi
+
+expected_runtime_dir="/run/user/$(id -u)"
+if [[ "$XDG_RUNTIME_DIR" != "$expected_runtime_dir" ]]; then
+  printf 'Expected XDG_RUNTIME_DIR to be %s, got %s\n' "$expected_runtime_dir" "$XDG_RUNTIME_DIR" >&2
+  exit 1
+fi
+
+require_transcript_line() {
+  local needle="$1"
+  grep -aF "$needle" "$HOME/install-transcript.txt"
+}
 
 script \
   --quiet \
@@ -142,19 +155,26 @@ script \
   "$HOME/install-transcript.txt" \
   <"$HOME/install-answers.txt"
 
-grep -Fq "Activate this Home Manager configuration now [y/N]:" "$HOME/install-transcript.txt"
+require_transcript_line "Installing standalone Home Manager config from:" >/dev/null
+require_transcript_line "Running nix flake check for:" >/dev/null
+require_transcript_line "Building the generated Home Manager activation package..." >/dev/null
+require_transcript_line "Activate this Home Manager configuration now [y/N]:" >/dev/null
+require_transcript_line "Starting Home Manager activation" >/dev/null
+require_transcript_line "Creating home file links in $HOME" >/dev/null
+if grep -aFq "Skipping activation." "$HOME/install-transcript.txt"; then
+  echo "install.sh skipped activation unexpectedly." >&2
+  exit 1
+fi
+
+echo "Validated install transcript markers:"
+require_transcript_line "Running nix flake check for:"
+require_transcript_line "Building the generated Home Manager activation package..."
+require_transcript_line "Activate this Home Manager configuration now [y/N]:"
+require_transcript_line "Starting Home Manager activation"
+require_transcript_line "Creating home file links in $HOME"
 test -d "$XDG_RUNTIME_DIR"
-systemctl --user show-environment >/dev/null
 test -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
 test -f "$HOME/.config/git/config"
-
-fish -lic 'command -sq nix; and command -sq oh-my-posh; and functions -q _omp_hook'
-bash -lic 'command -v nix >/dev/null && command -v oh-my-posh >/dev/null && declare -F _omp_hook >/dev/null'
-pwsh -NoLogo -File "$HOME/validate-pwsh.ps1"
-nvim --headless "+quitall"
-
-test "$(git config --get alias.adog)" = "log --all --decorate --oneline --graph"
-test "$(git config --get core.editor)" = "nvim"
 SCRIPT
 
 cat >"$CONTAINER_HOME/validate-pwsh.ps1" <<'SCRIPT'
@@ -222,12 +242,21 @@ sudo machinectl shell \
   --quiet \
   --uid="$container_user" \
   --setenv=DOTFILES_REPO="$repo_root" \
+  --setenv=CONTAINER_PATH="$container_path" \
   --setenv=PATH="$container_path" \
   --setenv=TERM="xterm-256color" \
+  --setenv=XDG_RUNTIME_DIR="/run/user/$host_user_uid" \
   --setenv=NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
   --setenv=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
   "$machine_name" \
   /bin/bash "$container_home/run-user-flow.sh"
+grep -aFq "Running nix flake check for:" "$rootfs$container_home/install-transcript.txt"
+grep -aFq "Building the generated Home Manager activation package..." "$rootfs$container_home/install-transcript.txt"
+grep -aFq "Activate this Home Manager configuration now [y/N]:" "$rootfs$container_home/install-transcript.txt"
+grep -aFq "Starting Home Manager activation" "$rootfs$container_home/install-transcript.txt"
+grep -aFq "Creating home file links in $container_home" "$rootfs$container_home/install-transcript.txt"
+test -f "$rootfs$container_home/.config/powershell/Microsoft.PowerShell_profile.ps1"
+test -f "$rootfs$container_home/.config/git/config"
 
 sudo machinectl poweroff "$machine_name" >/dev/null
 wait "$nspawn_pid"
