@@ -127,12 +127,12 @@ install_via_pipe_command_script="$test_root/run-install-via-pipe-command.sh"
 cat >"$install_via_pipe_command_script" <<'EOF'
 #!/usr/bin/env bash
 exec bash -lc '
-  cat "$1" | exec env -i \
+  exec env -i \
     HOME="$2" \
     PATH="$3" \
     TMPDIR="$2" \
     USER="$4" \
-    bash
+    bash < "$1"
 ' _ "$INSTALL_SCRIPT" "$INSTALL_TEST_HOME" "$INSTALL_TEST_PATH" "$INSTALL_DEFAULT_USERNAME"
 EOF
 chmod +x "$install_via_pipe_command_script"
@@ -164,15 +164,15 @@ grep -Fq "Building the generated Home Manager activation package..." "$transcrip
 grep -Fq "Activate this Home Manager configuration now [y/N]:" "$transcript"
 grep -Fq "Skipping activation." "$transcript"
 
-pipe_transcript="$test_root/install-via-pipe-transcript.txt"
-if ! script --quiet --return --flush --command "$install_via_pipe_command_script" "$pipe_transcript" <"$answers_file" >/dev/null; then
+INSTALL_VIA_PIPE_TRANSCRIPT="$test_root/install-via-pipe-transcript.txt"
+if ! script --quiet --return --flush --command "$install_via_pipe_command_script" "$INSTALL_VIA_PIPE_TRANSCRIPT" <"$answers_file" >/dev/null; then
   echo "install.sh pipe validation command failed; transcript follows:" >&2
-  cat "$pipe_transcript" >&2
+  cat "$INSTALL_VIA_PIPE_TRANSCRIPT" >&2
   exit 1
 fi
 
-grep -Fq "Installing standalone Home Manager config from:" "$pipe_transcript"
-grep -Fq "  github:TheFurnace/dotfiles" "$pipe_transcript"
-grep -Fq "Running nix flake check for: github:TheFurnace/dotfiles" "$pipe_transcript"
-grep -Fq "Building the generated Home Manager activation package..." "$pipe_transcript"
-grep -Fq "Skipping activation." "$pipe_transcript"
+grep -Fq "Installing standalone Home Manager config from:" "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "  github:TheFurnace/dotfiles" "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "Running nix flake check for: github:TheFurnace/dotfiles" "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "Building the generated Home Manager activation package..." "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "Skipping activation." "$INSTALL_VIA_PIPE_TRANSCRIPT"
