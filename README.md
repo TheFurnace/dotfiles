@@ -183,7 +183,7 @@ environment.
 | `DOTFILES_USER` | `$USER` / `id -un` | Unix username for the Home Manager profile |
 | `DOTFILES_HOME` | `$HOME` | Absolute path to your home directory |
 | `DOTFILES_STATE_VERSION` | `25.11` | Home Manager state version |
-| `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .`) |
+| `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .#default`) |
 
 On non-NixOS, use `dotfiles.homeManagerModules.default`.
 
