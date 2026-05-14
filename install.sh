@@ -8,62 +8,16 @@ if [ -n "${NIX_CONFIG:-}" ]; then
     printf -v nix_cli_config '%s\n%s' "$NIX_CONFIG" "$nix_cli_config"
 fi
 default_mutable_checkout_subdir="dotfiles"
-bootstrap_guard_var="DOTFILES_INSTALL_BOOTSTRAPPED"
 
-resolve_bootstrap_nixpkgs_source() {
-    local lock_path="$1"
-    local locked_rev=""
-
-    if [ -f "$lock_path" ]; then
-        locked_rev="$(
-            NIXPKGS_LOCK_PATH="$lock_path" \
-                "${nix_cmd[@]}" eval --raw --expr '
-                    let
-                      lock = builtins.fromJSON (builtins.readFile (builtins.getEnv "NIXPKGS_LOCK_PATH"));
-                    in
-                    lock.nodes.nixpkgs.locked.rev
-                ' 2>/dev/null || true
-        )"
-    fi
-
-    if [ -n "$locked_rev" ]; then
-        printf 'https://github.com/NixOS/nixpkgs/archive/%s.tar.gz\n' "$locked_rev"
-        return
-    fi
-
-    printf 'https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz\n'
-}
-
-ensure_script_dependencies() {
-    if command -v git >/dev/null 2>&1; then
-        return
-    fi
-
-    if [ "${!bootstrap_guard_var:-0}" = "1" ]; then
-        echo "Failed to bootstrap installer dependencies with nix-shell." >&2
-        exit 1
-    fi
-
-    local bash_bin script_path bootstrap_command nixpkgs_source
-
-    bash_bin="$(command -v bash)"
-    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-    nixpkgs_source="$(resolve_bootstrap_nixpkgs_source "$(dirname "$script_path")/flake.lock")"
-    printf -v bootstrap_command '%q ' env "$bootstrap_guard_var=1" "$bash_bin" "$script_path" "$@"
-
-    exec nix-shell \
-        --extra-experimental-features "nix-command flakes" \
-        -I "nixpkgs=$nixpkgs_source" \
-        -p git nix \
-        --run "$bootstrap_command"
-}
-
-ensure_script_dependencies "$@"
+if ! command -v git >/dev/null 2>&1; then
+    echo "git is required to run install.sh." >&2
+    exit 1
+fi
 
 resolve_dotfiles_url() {
     local script_path script_dir
 
-    script_path="${BASH_SOURCE[0]-}"
+    script_path="${BASH_SOURCE[0]:-}"
     if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
         script_dir="$(cd "$(dirname "$script_path")" && pwd)"
         if [ -f "$script_dir/flake.nix" ]; then
@@ -228,7 +182,6 @@ cat >"$temp_dir/flake.nix" <<'EOF'
       };
 
       packages.${system} = {
-        git-cli = nixpkgs.legacyPackages.${system}.git;
         home-manager-cli = homeManagerPackage;
       };
     };
@@ -279,7 +232,5 @@ if [ "$activate" != "true" ]; then
     exit 0
 fi
 
-"${nix_cmd[@]}" shell \
-    "$temp_dir#git-cli" \
-    "$temp_dir#home-manager-cli" \
+"${nix_cmd[@]}" shell "$temp_dir#home-manager-cli" \
     -c env NIX_CONFIG="$nix_cli_config" home-manager switch -b backup --flake "$temp_dir#installer"

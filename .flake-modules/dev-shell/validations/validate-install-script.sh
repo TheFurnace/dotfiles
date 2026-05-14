@@ -27,12 +27,11 @@ required_path_commands=(
   bash
   cat
   dirname
-  grep
+  git
   id
   mktemp
   mv
   nix
-  nix-shell
   rm
   sed
 )
@@ -78,7 +77,11 @@ if ! PATH="$safe_path" command -v nix >/dev/null 2>&1; then
   exit 1
 fi
 
-assert_command_absent git
+if ! PATH="$safe_path" command -v git >/dev/null 2>&1; then
+  echo "Expected git to be available in sanitized PATH: $safe_path" >&2
+  exit 1
+fi
+
 assert_command_absent home-manager
 
 install_default_system="$(
@@ -125,6 +128,20 @@ exec env -i \
 EOF
 chmod +x "$install_command_script"
 
+install_via_pipe_command_script="$test_root/run-install-via-pipe-command.sh"
+cat >"$install_via_pipe_command_script" <<'EOF'
+#!/usr/bin/env bash
+exec bash -lc '
+  exec env -i \
+    HOME="$2" \
+    PATH="$3" \
+    TMPDIR="$2" \
+    USER="$4" \
+    bash < "$1"
+' _ "$INSTALL_SCRIPT" "$INSTALL_TEST_HOME" "$INSTALL_TEST_PATH" "$INSTALL_DEFAULT_USERNAME"
+EOF
+chmod +x "$install_via_pipe_command_script"
+
 # The validation shell is Linux-only, so use util-linux script to provide a PTY
 # while the wrapper script clears the environment and reapplies the sanitized PATH.
 if ! script --quiet --return --flush --command "$install_command_script" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null; then
@@ -151,3 +168,16 @@ grep -Fq "Running nix flake check for: path:$DOTFILES_REPO" "$transcript"
 grep -Fq "Building the generated Home Manager activation package..." "$transcript"
 grep -Fq "Activate this Home Manager configuration now [y/N]:" "$transcript"
 grep -Fq "Skipping activation." "$transcript"
+
+INSTALL_VIA_PIPE_TRANSCRIPT="$test_root/install-via-pipe-transcript.txt"
+if ! script --quiet --return --flush --command "$install_via_pipe_command_script" "$INSTALL_VIA_PIPE_TRANSCRIPT" <"$answers_file" >/dev/null; then
+  echo "install.sh pipe validation command failed; transcript follows:" >&2
+  cat "$INSTALL_VIA_PIPE_TRANSCRIPT" >&2
+  exit 1
+fi
+
+grep -Fq "Installing standalone Home Manager config from:" "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "  github:TheFurnace/dotfiles" "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "Running nix flake check for: github:TheFurnace/dotfiles" "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "Building the generated Home Manager activation package..." "$INSTALL_VIA_PIPE_TRANSCRIPT"
+grep -Fq "Skipping activation." "$INSTALL_VIA_PIPE_TRANSCRIPT"
