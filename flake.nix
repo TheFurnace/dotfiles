@@ -57,6 +57,16 @@
         inherit nixpkgs exampleHomeConfiguration;
       };
 
+      defaultSystem = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${defaultSystem};
+
+      # Evaluate the full nmt test suite for the default system.  Individual
+      # test derivations are exposed as legacyPackages.test-<name> so the
+      # Python runner and `nix flake check` can discover and build them.
+      testSuite = import ./tests {
+        inherit self nix-index-database home-manager pkgs;
+      };
+
       installerModule = import ./.flake-modules/installer.nix {
         inherit nixpkgs home-manager self;
       };
@@ -74,6 +84,17 @@
 
       nixosConfigurations.example = exampleNixosConfiguration;
       devShells = devShellModule.devShells;
+
+      # Individual nmt test derivations, prefixed with "test-" so the Python
+      # runner can discover them via `nix eval .#legacyPackages.${system}`.
+      legacyPackages.${defaultSystem} =
+        nixpkgs.lib.mapAttrs'
+          (n: nixpkgs.lib.nameValuePair "test-${n}")
+          testSuite.build;
+
+      # Runnable test-runner script: `nix run .#packages.x86_64-linux.tests`
+      packages.${defaultSystem}.tests =
+        pkgs.callPackage ./tests/package.nix { flake = self; };
 
       # `nix run github:TheFurnace/dotfiles` installer.
       apps = installerModule.apps;
