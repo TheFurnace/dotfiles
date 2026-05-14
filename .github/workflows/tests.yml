@@ -18,5 +18,5 @@ jobs:
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v34
 
-      - name: Build all nmt tests
-        run: nix build --no-link --print-build-logs '.#legacyPackages.x86_64-linux.test-all'
+      - name: Run nmt tests
+        run: python3 tests/tests.py

@@ -24,6 +24,7 @@ Pass extra flags through to nix build::
 """
 
 import argparse
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -120,6 +121,7 @@ class TestRunner:
         count = len(tests_to_run)
         print(f"{INFO_EMOJI} Running {count} test(s)...")
         failed: list[str] = []
+        results: list[tuple[str, bool]] = []
 
         for i, test in enumerate(tests_to_run, 1):
             print(f"\n--- [{i}/{count}] {test} ---")
@@ -134,20 +136,52 @@ class TestRunner:
             ]
             try:
                 subprocess.run(cmd, check=True, cwd=self.repo_root)
+                results.append((test, True))
                 print(f"{SUCCESS_EMOJI} {test}")
             except subprocess.CalledProcessError:
+                results.append((test, False))
                 failed.append(test)
                 print(f"{FAILURE_EMOJI} {test}", file=sys.stderr)
 
         print("\n--- Summary ---")
-        if not failed:
+        all_passed = not failed
+        if all_passed:
             print(f"{SUCCESS_EMOJI} All {count} test(s) passed!")
-            return True
+        else:
+            print(f"{FAILURE_EMOJI} {len(failed)} of {count} test(s) failed:")
+            for t in failed:
+                print(f"  - {t}")
 
-        print(f"{FAILURE_EMOJI} {len(failed)} of {count} test(s) failed:")
-        for t in failed:
-            print(f"  - {t}")
-        return False
+        self._write_github_summary(results, count, failed)
+        return all_passed
+
+    def _write_github_summary(
+        self, results: list[tuple[str, bool]], total: int, failed: list[str]
+    ) -> None:
+        """Write a Markdown job summary to $GITHUB_STEP_SUMMARY when running in CI."""
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if not summary_path:
+            return
+
+        lines: list[str] = ["## nmt Test Results"]
+        lines.append("| Test | Result |")
+        lines.append("|------|--------|")
+        for test, passed in results:
+            icon = SUCCESS_EMOJI if passed else FAILURE_EMOJI
+            status = "Passed" if passed else "Failed"
+            lines.append(f"| `{test}` | {icon} {status} |")
+
+        lines.append("")
+        if not failed:
+            lines.append(f"{SUCCESS_EMOJI} **All {total} test(s) passed.**")
+        else:
+            lines.append(
+                f"{FAILURE_EMOJI} **{len(failed)} of {total} test(s) failed.**"
+            )
+        lines.append("")
+
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
 
 
 def main() -> None:
