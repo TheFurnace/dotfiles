@@ -33,4 +33,7 @@ in
       validations.validationPackages.validateDotfilesConfig
     ]);
   };
+
+  # Expose validation packages so flake.nix can wire them into checks.
+  inherit (validations) validationPackages;
 }

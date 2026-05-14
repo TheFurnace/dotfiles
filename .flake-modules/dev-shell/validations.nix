@@ -58,10 +58,35 @@ let
     ];
     text = builtins.readFile ./validations/validate-dotfiles-config.sh;
   };
+
+  # Subset of validators that do not require network access or impure Nix
+  # evaluation, so they can run inside a standard Nix build sandbox as a
+  # flake check. validate-install-script is intentionally excluded because it
+  # invokes `nix` with --impure and uses util-linux `script` to drive a PTY.
+  validateConfigLints = pkgs.writeShellApplication {
+    name = "validate-config-lints";
+    runtimeInputs = [
+      validateFishConfig
+      validateKittyConfig
+      validateNeovimConfig
+      validateOhMyPoshConfig
+      validatePwshConfig
+      validateSetupScript
+    ];
+    text = ''
+      validate-fish-config
+      validate-neovim-config
+      validate-oh-my-posh-config
+      validate-kitty-config
+      validate-pwsh-config
+      validate-setup-script
+    '';
+  };
 in
 {
   validationPackages = {
     inherit
+      validateConfigLints
       validateDotfilesConfig
       validateFishConfig
       validateInstallScript

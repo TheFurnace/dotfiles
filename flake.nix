@@ -56,6 +56,28 @@
       devShellModule = import ./.flake-modules/dev-shell.nix {
         inherit nixpkgs exampleHomeConfiguration;
       };
+
+      defaultSystem = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${defaultSystem};
+      lib = nixpkgs.lib;
+
+      # Scenario-based Nix checks (one derivation per behaviour).
+      scenarioChecks = import ./tests {
+        inherit pkgs lib self nixpkgs home-manager homeModule helperLib exampleHomeConfiguration;
+      };
+
+      # Wrap the sandboxable shell validators as a single check derivation.
+      # validate-install-script is excluded because it requires impure Nix
+      # evaluation and a PTY; it remains available in the dev shell only.
+      configLintsCheck = pkgs.runCommand "config-lints" {
+        nativeBuildInputs = [
+          devShellModule.validationPackages.validateConfigLints
+        ];
+        DOTFILES_REPO = "${self}";
+      } ''
+        validate-config-lints
+        touch $out
+      '';
     in
     {
       # Public helpers for downstream flakes.
@@ -70,5 +92,11 @@
 
       nixosConfigurations.example = exampleNixosConfiguration;
       devShells = devShellModule.devShells;
+
+      # Flake checks: scenario-based Nix tests + sandboxable shell lints.
+      # Run all of them with: nix flake check
+      checks.${defaultSystem} = scenarioChecks // {
+        config-lints = configLintsCheck;
+      };
     };
 }

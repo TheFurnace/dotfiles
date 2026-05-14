@@ -391,6 +391,36 @@ Recipes:
 
 `pull-config` accepts absolute paths or paths relative to `~/.config/`, but only under top-level entries that already exist in this repo's `.config/` and actually contain files in the repo. With no paths, it scans only those matching managed subtrees.
 
+## Validation
+
+`nix flake check` runs two categories of checks:
+
+### Scenario-based Nix checks (`tests/`)
+
+These are small, focused derivations that validate the behavioural contracts of the dotfiles module. Each check lives in `tests/scenarios/` and tests one thing:
+
+| Check | What it validates |
+|---|---|
+| `example-build` | The built-in `.#example` configuration evaluates and builds |
+| `standalone-lib-build` | `dotfiles.lib.mkHomeConfiguration` builds a minimal consumer config |
+| `immutable-config-files` | Representative `.config/` entries are materialised as store-path sources in immutable mode |
+| `mutable-config-files` | Representative `.config/` entries use `mkOutOfStoreSymlink` derivations in mutable mode |
+| `mutable-requires-localpath` | The `dotfiles.localPath` assertion fires when `mutable = true` and `localPath` is not set |
+| `fish-via-home-manager` | Fish is enabled via `programs.fish` and no `.config/fish/` entries leak into `xdg.configFile` |
+
+### Shell/tool lints (`config-lints`)
+
+These are syntax and tool validation checks for the config files and scripts. They run the existing `validate-*` shell validators inside a Nix sandbox:
+
+- fish config syntax
+- Lua syntax for Neovim config
+- oh-my-posh theme validation
+- Kitty config parsing
+- PowerShell profile content check
+- setup.sh syntax and symlink behaviour
+
+`validate-install-script` is intentionally excluded from `nix flake check` because it requires impure Nix evaluation and a PTY. It remains available in the dev shell.
+
 ## Development shell
 
 For repo-local validation work, this flake exposes a single dev shell:
@@ -399,9 +429,7 @@ For repo-local validation work, this flake exposes a single dev shell:
 nix develop .#default
 ```
 
-The shell prepares a temporary `$HOME` that points the relevant tools at this checkout's `.config/`.
-
-- `nix develop .#default` — CI/local validation shell with `nix` and `validate-dotfiles-config`
+The shell prepares a temporary `$HOME` that points the relevant tools at this checkout's `.config/`. It provides `validate-dotfiles-config`, which runs all validators including `validate-install-script`.
 
 ## Notes
 

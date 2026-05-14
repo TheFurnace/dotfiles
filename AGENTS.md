@@ -38,6 +38,25 @@ setup.sh             # bootstrap script for first-time setup on a new machine
 - validate changes with `nix flake check`
 - commit changes
 
+## Validation architecture
+
+`nix flake check` runs two categories of checks:
+
+**Scenario-based Nix tests** (`tests/scenarios/`) — one derivation per behaviour:
+- `example-build` — the built-in `.#example` config evaluates and builds
+- `standalone-lib-build` — `dotfiles.lib.mkHomeConfiguration` builds a minimal consumer config
+- `immutable-config-files` — `.config/` entries are store-path sources in immutable mode
+- `mutable-config-files` — `.config/` entries use `mkOutOfStoreSymlink` in mutable mode
+- `mutable-requires-localpath` — the `localPath` assertion fires when expected
+- `fish-via-home-manager` — fish is enabled via `programs.fish`, not via `.config/fish/` files
+
+**Shell/tool lints** (`config-lints`) — sandboxable validators for config file syntax:
+- fish config syntax, Lua/nvim syntax, oh-my-posh theme, kitty config, PowerShell profile, setup.sh
+
+`validate-install-script` requires impure Nix evaluation and a PTY; it is excluded from `nix flake check` and only available in the dev shell (`nix develop .#default`).
+
+To add a new scenario test: add a file under `tests/scenarios/` that accepts the needed arguments and returns a derivation. Wire it into `tests/default.nix`.
+
 ## Cautions
 
 - `flake.nix` walks `.config/` at evaluation time using `builtins.readDir`. New subdirectories are picked up automatically on the next rebuild; no manual wiring is needed.
