@@ -1,5 +1,4 @@
-#!/usr/bin/env nix-shell
-#! nix-shell -i bash -p git
+#!/usr/bin/env -S nix --extra-experimental-features nix-command --extra-experimental-features flakes shell nixpkgs#git -c bash
 
 set -euo pipefail
 
