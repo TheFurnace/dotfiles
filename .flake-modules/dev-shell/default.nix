@@ -2,9 +2,6 @@
 let
   defaultSystem = "x86_64-linux";
   pkgs = nixpkgs.legacyPackages.${defaultSystem};
-  validations = import ./validations.nix {
-    inherit pkgs exampleHomeConfiguration;
-  };
   commonShellHook = ''
     export DOTFILES_REPO="$(command -v git >/dev/null 2>&1 && git rev-parse --show-toplevel 2>/dev/null || pwd)"
     export DOTFILES_DEV_HOME="''${TMPDIR:-/tmp}/dotfiles-dev-shell"
@@ -28,9 +25,8 @@ let
 in
 {
   devShells.${defaultSystem} = {
-    default = mkDotfilesShell "validation" (with pkgs; [
+    default = mkDotfilesShell "default" (with pkgs; [
       nix
-      validations.validationPackages.validateDotfilesConfig
     ]);
   };
 }
