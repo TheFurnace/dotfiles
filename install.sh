@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#! nix-shell --extra-experimental-features flakes -i bash -I nixpkgs=flake:nixpkgs -p git
+#! nix-shell --extra-experimental-features flakes -i bash -I nixpkgs=flake:nixpkgs -p git nix
 
 set -euo pipefail
 
