@@ -107,17 +107,11 @@ container_user_uid="$(id -u "$CONTAINER_USER")"
 container_user_gid="$(id -g "$CONTAINER_USER")"
 loginctl enable-linger "$CONTAINER_USER"
 
-# Answers, in order:
-# 1-4) accept username/home/state-version/system defaults
-# 5) disable mutable mode
-# 6) approve activation of the generated Home Manager configuration
-printf '\n\n\n\nn\ny\n' >"$CONTAINER_HOME/install-answers.txt"
-
 cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
 #!/bin/bash
 set -euo pipefail
 
-exec bash "$DOTFILES_REPO/install.sh"
+cat "$DOTFILES_REPO/install.sh" | DOTFILES_INSTALL_DOTFILES_URL="path:$DOTFILES_REPO" bash
 SCRIPT
 
 cat >"$CONTAINER_HOME/run-user-flow.sh" <<'SCRIPT'
@@ -143,36 +137,35 @@ if [[ "$XDG_RUNTIME_DIR" != "$expected_runtime_dir" ]]; then
 fi
 
 require_transcript_line() {
-  local needle="$1"
-  grep -aF "$needle" "$HOME/install-transcript.txt"
+  local transcript="$1"
+  local needle="$2"
+  grep -aF "$needle" "$transcript"
 }
 
-script \
-  --quiet \
-  --return \
-  --flush \
-  --command "/bin/bash \"$HOME/run-install.sh\"" \
-  "$HOME/install-transcript.txt" \
-  <"$HOME/install-answers.txt"
+first_transcript="$HOME/install-first-transcript.txt"
+second_transcript="$HOME/install-second-transcript.txt"
+flake_path="$HOME/.config/home-manager/flake.nix"
 
-require_transcript_line "Installing standalone Home Manager config from:" >/dev/null
-require_transcript_line "Running nix flake check for:" >/dev/null
-require_transcript_line "Building the generated Home Manager activation package..." >/dev/null
-require_transcript_line "Activate this Home Manager configuration now [y/N]:" >/dev/null
-require_transcript_line "Starting Home Manager activation" >/dev/null
-require_transcript_line "Creating home file links in $HOME" >/dev/null
-if grep -aFq "Skipping activation." "$HOME/install-transcript.txt"; then
-  echo "install.sh skipped activation unexpectedly." >&2
-  exit 1
-fi
+/bin/bash "$HOME/run-install.sh" >"$first_transcript" 2>&1
+/bin/bash "$HOME/run-install.sh" >"$second_transcript" 2>&1
+
+require_transcript_line "$first_transcript" "Creating initial Home Manager flake at: $flake_path" >/dev/null
+require_transcript_line "$first_transcript" "Building Home Manager configuration: dotfiles" >/dev/null
+require_transcript_line "$first_transcript" "Activating Home Manager configuration: dotfiles" >/dev/null
+require_transcript_line "$first_transcript" "Starting Home Manager activation" >/dev/null
+require_transcript_line "$first_transcript" "Creating home file links in $HOME" >/dev/null
+require_transcript_line "$second_transcript" "Using existing Home Manager flake at: $flake_path" >/dev/null
+require_transcript_line "$second_transcript" "Building Home Manager configuration: dotfiles" >/dev/null
+require_transcript_line "$second_transcript" "Activating Home Manager configuration: dotfiles" >/dev/null
 
 echo "Validated install transcript markers:"
-require_transcript_line "Running nix flake check for:"
-require_transcript_line "Building the generated Home Manager activation package..."
-require_transcript_line "Activate this Home Manager configuration now [y/N]:"
-require_transcript_line "Starting Home Manager activation"
-require_transcript_line "Creating home file links in $HOME"
+require_transcript_line "$first_transcript" "Creating initial Home Manager flake at: $flake_path"
+require_transcript_line "$first_transcript" "Building Home Manager configuration: dotfiles"
+require_transcript_line "$first_transcript" "Activating Home Manager configuration: dotfiles"
+require_transcript_line "$second_transcript" "Using existing Home Manager flake at: $flake_path"
 test -d "$XDG_RUNTIME_DIR"
+test -f "$flake_path"
+grep -aFq "inputs.dotfiles.url = \"path:$DOTFILES_REPO\";" "$flake_path"
 test -f "$HOME/.config/powershell/Microsoft.PowerShell_profile.ps1"
 test -f "$HOME/.config/git/config"
 SCRIPT
@@ -189,7 +182,6 @@ SCRIPT
 
 chmod +x "$CONTAINER_HOME/run-install.sh" "$CONTAINER_HOME/run-user-flow.sh"
 chown "$container_user_uid:$container_user_gid" \
-  "$CONTAINER_HOME/install-answers.txt" \
   "$CONTAINER_HOME/run-install.sh" \
   "$CONTAINER_HOME/run-user-flow.sh" \
   "$CONTAINER_HOME/validate-pwsh.ps1"
@@ -258,11 +250,11 @@ script \
   --flush \
   --command "$(printf '%q ' "${machinectl_shell_command[@]}")" \
   /dev/null
-run_in_machine grep -aFq "Running nix flake check for:" "$container_home/install-transcript.txt"
-run_in_machine grep -aFq "Building the generated Home Manager activation package..." "$container_home/install-transcript.txt"
-run_in_machine grep -aFq "Activate this Home Manager configuration now [y/N]:" "$container_home/install-transcript.txt"
-run_in_machine grep -aFq "Starting Home Manager activation" "$container_home/install-transcript.txt"
-run_in_machine grep -aFq "Creating home file links in $container_home" "$container_home/install-transcript.txt"
+run_in_machine grep -aFq "Creating initial Home Manager flake at: $container_home/.config/home-manager/flake.nix" "$container_home/install-first-transcript.txt"
+run_in_machine grep -aFq "Using existing Home Manager flake at: $container_home/.config/home-manager/flake.nix" "$container_home/install-second-transcript.txt"
+run_in_machine grep -aFq "Starting Home Manager activation" "$container_home/install-first-transcript.txt"
+run_in_machine grep -aFq "Creating home file links in $container_home" "$container_home/install-first-transcript.txt"
+run_in_machine grep -aFq "inputs.dotfiles.url = \"path:$repo_root\";" "$container_home/.config/home-manager/flake.nix"
 run_in_machine test -f "$container_home/.config/powershell/Microsoft.PowerShell_profile.ps1"
 run_in_machine test -f "$container_home/.config/git/config"
 

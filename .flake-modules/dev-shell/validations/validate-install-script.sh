@@ -2,39 +2,34 @@
 set -euo pipefail
 
 install_script="$DOTFILES_REPO/install.sh"
-nix_cmd=(nix --extra-experimental-features "nix-command flakes")
-current_system_expr='builtins.currentSystem'
 temp_root="${TMPDIR:-/tmp}"
-
-if [ "$(uname -s)" != "Linux" ]; then
-  echo "validate-install-script requires Linux because it relies on util-linux script" >&2
-  exit 1
-fi
-
-test -x "$install_script"
-bash -n "$install_script"
-
 test_root="$(mktemp -d "$temp_root/dotfiles-install-validate.XXXXXX")"
+
 cleanup() {
   rm -rf "$test_root"
 }
 trap cleanup EXIT
 
 test_home="$test_root/home"
-mkdir -p "$test_home"
+test_xdg_config_home="$test_home/.config"
+test_transcript_first="$test_root/install-first.txt"
+test_transcript_second="$test_root/install-second.txt"
+test_flake_snapshot="$test_root/flake.nix.snapshot"
+mkdir -p "$test_xdg_config_home" "$test_root/tmp"
+
+test -x "$install_script"
+bash -n "$install_script"
 
 required_path_commands=(
   bash
   cat
   dirname
-  grep
   id
+  mkdir
   mktemp
-  mv
   nix
-  nix-shell
+  pwd
   rm
-  sed
 )
 
 safe_path=""
@@ -81,73 +76,34 @@ fi
 assert_command_absent git
 assert_command_absent home-manager
 
-install_default_system="$(
-  PATH="$safe_path" "${nix_cmd[@]}" eval --impure --raw --expr "$current_system_expr"
-)"
+run_install_via_pipe() {
+  local transcript="$1"
 
-export INSTALL_SCRIPT="$install_script"
-install_script_bash="$(command -v bash)"
-export INSTALL_SCRIPT_BASH="$install_script_bash"
-export INSTALL_TEST_HOME="$test_home"
-export INSTALL_TEST_PATH="$safe_path"
-export INSTALL_TRANSCRIPT="$test_root/install-transcript.txt"
-export INSTALL_DEFAULT_USERNAME="testuser"
-export INSTALL_DEFAULT_HOME="$test_home"
-export INSTALL_DEFAULT_STATE_VERSION="25.11"
-export INSTALL_DEFAULT_SYSTEM="$install_default_system"
+  cat "$install_script" | env -i \
+    DOTFILES_INSTALL_DOTFILES_URL="path:$DOTFILES_REPO" \
+    HOME="$test_home" \
+    PATH="$safe_path" \
+    TMPDIR="$test_root/tmp" \
+    USER="testuser" \
+    XDG_CONFIG_HOME="$test_xdg_config_home" \
+    bash >"$transcript" 2>&1
+}
 
-answers_file="$test_root/install-answers.txt"
-{
-  # Username
-  printf '\n'
-  # Home directory
-  printf '\n'
-  # Home Manager state version
-  printf '\n'
-  # System
-  printf '\n'
-  # Enable mutable mode
-  printf 'n\n'
-  # Activate this Home Manager configuration now
-  printf 'n\n'
-} >"$answers_file"
+run_install_via_pipe "$test_transcript_first"
 
-install_command_script="$test_root/run-install-command.sh"
-cat >"$install_command_script" <<'EOF'
-#!/usr/bin/env bash
-exec env -i \
-  HOME="$INSTALL_TEST_HOME" \
-  PATH="$INSTALL_TEST_PATH" \
-  TMPDIR="$INSTALL_TEST_HOME" \
-  USER="$INSTALL_DEFAULT_USERNAME" \
-  "$INSTALL_SCRIPT_BASH" \
-  "$INSTALL_SCRIPT"
-EOF
-chmod +x "$install_command_script"
+flake_path="$test_xdg_config_home/home-manager/flake.nix"
+test -f "$flake_path"
+cp "$flake_path" "$test_flake_snapshot"
 
-# The validation shell is Linux-only, so use util-linux script to provide a PTY
-# while the wrapper script clears the environment and reapplies the sanitized PATH.
-if ! script --quiet --return --flush --command "$install_command_script" "$INSTALL_TRANSCRIPT" <"$answers_file" >/dev/null; then
-  echo "install.sh validation command failed; transcript follows:" >&2
-  cat "$INSTALL_TRANSCRIPT" >&2
-  exit 1
-fi
+grep -Fq "Creating initial Home Manager flake at: $flake_path" "$test_transcript_first"
+grep -Fq "Building Home Manager configuration: testuser" "$test_transcript_first"
+grep -Fq "Activating Home Manager configuration: testuser" "$test_transcript_first"
+grep -Fq "inputs.dotfiles.url = \"path:$DOTFILES_REPO\";" "$flake_path"
+grep -Fq "homeConfigurations.\"testuser\"" "$flake_path"
 
-transcript="$INSTALL_TRANSCRIPT"
+run_install_via_pipe "$test_transcript_second"
 
-grep -Fq "Installing standalone Home Manager config from:" "$transcript"
-grep -Fq "Username [$INSTALL_DEFAULT_USERNAME]:" "$transcript"
-grep -Fq "Home directory [$INSTALL_DEFAULT_HOME]:" "$transcript"
-grep -Fq "Home Manager state version [$INSTALL_DEFAULT_STATE_VERSION]:" "$transcript"
-grep -Fq "System [$INSTALL_DEFAULT_SYSTEM]:" "$transcript"
-grep -Fq "Enable mutable mode [y/N]:" "$transcript"
-grep -Fq "Configuration summary:" "$transcript"
-grep -Fq "username:       $INSTALL_DEFAULT_USERNAME" "$transcript"
-grep -Fq "home directory: $INSTALL_DEFAULT_HOME" "$transcript"
-grep -Fq "state version:  $INSTALL_DEFAULT_STATE_VERSION" "$transcript"
-grep -Fq "system:         $INSTALL_DEFAULT_SYSTEM" "$transcript"
-grep -Fq "mutable:        false" "$transcript"
-grep -Fq "Running nix flake check for: path:$DOTFILES_REPO" "$transcript"
-grep -Fq "Building the generated Home Manager activation package..." "$transcript"
-grep -Fq "Activate this Home Manager configuration now [y/N]:" "$transcript"
-grep -Fq "Skipping activation." "$transcript"
+cmp -s "$flake_path" "$test_flake_snapshot"
+grep -Fq "Using existing Home Manager flake at: $flake_path" "$test_transcript_second"
+grep -Fq "Building Home Manager configuration: testuser" "$test_transcript_second"
+grep -Fq "Activating Home Manager configuration: testuser" "$test_transcript_second"

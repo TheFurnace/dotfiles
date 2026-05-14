@@ -1,78 +1,63 @@
+#!/usr/bin/env -S nix --extra-experimental-features nix-command --extra-experimental-features flakes shell nixpkgs#bash nixpkgs#git nixpkgs#home-manager --command bash
+
+set -euo pipefail
+
+bootstrap_cmd=(
+    nix
+    --extra-experimental-features
+    nix-command
+    --extra-experimental-features
+    flakes
+    shell
+    nixpkgs#bash
+    nixpkgs#git
+    nixpkgs#home-manager
+    --command
+    bash
+)
+
+temp_script="$(mktemp "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX")"
+cleanup() {
+    rm -f "$temp_script"
+}
+trap cleanup EXIT
+
+source_script_path="${BASH_SOURCE[0]-}"
+source_script_dir=""
+if [ -n "$source_script_path" ] && [ -e "$source_script_path" ]; then
+    candidate_source_dir="$(cd "$(dirname "$source_script_path")" && pwd)"
+    if [ -f "$candidate_source_dir/flake.nix" ] && [ -f "$candidate_source_dir/install.sh" ]; then
+        source_script_dir="$candidate_source_dir"
+    fi
+fi
+
+cat >"$temp_script" <<'SCRIPT'
 #!/usr/bin/env bash
 
 set -euo pipefail
 
 nix_cmd=(nix --extra-experimental-features "nix-command flakes")
-nix_cli_config='experimental-features = nix-command flakes'
+default_state_version="25.11"
+default_dotfiles_url="github:TheFurnace/dotfiles"
+xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+home_manager_dir="$xdg_config_home/home-manager"
+flake_path="$home_manager_dir/flake.nix"
+
+nix_config_line='experimental-features = nix-command flakes'
 if [ -n "${NIX_CONFIG:-}" ]; then
-    printf -v nix_cli_config '%s\n%s' "$NIX_CONFIG" "$nix_cli_config"
+    printf -v NIX_CONFIG '%s\n%s' "$NIX_CONFIG" "$nix_config_line"
+else
+    NIX_CONFIG="$nix_config_line"
 fi
-default_mutable_checkout_subdir="dotfiles"
-bootstrap_guard_var="DOTFILES_INSTALL_BOOTSTRAPPED"
-
-resolve_bootstrap_nixpkgs_source() {
-    local lock_path="$1"
-    local locked_rev=""
-
-    if [ -f "$lock_path" ]; then
-        locked_rev="$(
-            NIXPKGS_LOCK_PATH="$lock_path" \
-                "${nix_cmd[@]}" eval --raw --expr '
-                    let
-                      lock = builtins.fromJSON (builtins.readFile (builtins.getEnv "NIXPKGS_LOCK_PATH"));
-                    in
-                    lock.nodes.nixpkgs.locked.rev
-                ' 2>/dev/null || true
-        )"
-    fi
-
-    if [ -n "$locked_rev" ]; then
-        printf 'https://github.com/NixOS/nixpkgs/archive/%s.tar.gz\n' "$locked_rev"
-        return
-    fi
-
-    printf 'https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz\n'
-}
-
-ensure_script_dependencies() {
-    if command -v git >/dev/null 2>&1; then
-        return
-    fi
-
-    if [ "${!bootstrap_guard_var:-0}" = "1" ]; then
-        echo "Failed to bootstrap installer dependencies with nix-shell." >&2
-        exit 1
-    fi
-
-    local bash_bin script_path bootstrap_command nixpkgs_source
-
-    bash_bin="$(command -v bash)"
-    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-    nixpkgs_source="$(resolve_bootstrap_nixpkgs_source "$(dirname "$script_path")/flake.lock")"
-    printf -v bootstrap_command '%q ' env "$bootstrap_guard_var=1" "$bash_bin" "$script_path" "$@"
-
-    exec nix-shell \
-        --extra-experimental-features "nix-command flakes" \
-        -I "nixpkgs=$nixpkgs_source" \
-        -p git nix \
-        --run "$bootstrap_command"
-}
-
-ensure_script_dependencies "$@"
+export NIX_CONFIG
 
 resolve_dotfiles_url() {
-    local script_path script_dir
-
-    script_path="${BASH_SOURCE[0]-}"
-    if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
-        script_dir="$(cd "$(dirname "$script_path")" && pwd)"
-        if [ -f "$script_dir/flake.nix" ]; then
-            printf 'path:%s\n' "$script_dir"
-            return
-        fi
+    if [ -n "${DOTFILES_INSTALL_SOURCE_DIR:-}" ] && [ -f "${DOTFILES_INSTALL_SOURCE_DIR}/flake.nix" ] && [ -f "${DOTFILES_INSTALL_SOURCE_DIR}/install.sh" ]; then
+        printf 'path:%s\n' "$DOTFILES_INSTALL_SOURCE_DIR"
+        return
     fi
 
-    printf 'github:TheFurnace/dotfiles\n'
+    printf '%s\n' "$default_dotfiles_url"
 }
 
 nix_escape() {
@@ -83,203 +68,77 @@ nix_escape() {
     printf '%s' "$value"
 }
 
-prompt_with_default() {
-    local label="$1"
-    local default_value="$2"
-    local value
-
-    read -r -p "$label [$default_value]: " value </dev/tty
-    if [ -z "$value" ]; then
-        value="$default_value"
-    fi
-
-    printf '%s' "$value"
-}
-
-prompt_yes_no() {
-    local label="$1"
-    local default_value="$2"
-    local prompt
-    local reply
-
-    if [ "$default_value" = "true" ]; then
-        prompt="Y/n"
-    else
-        prompt="y/N"
-    fi
-
-    while true; do
-        read -r -p "$label [$prompt]: " reply </dev/tty
-        if [ -z "$reply" ]; then
-            printf '%s\n' "$default_value"
-            return
-        fi
-
-        case "${reply,,}" in
-            y|yes)
-                printf 'true\n'
-                return
-                ;;
-            n|no)
-                printf 'false\n'
-                return
-                ;;
-        esac
-
-        echo "Please answer yes or no."
-    done
-}
-
-escape_sed_replacement() {
-    local value="$1"
-    value=${value//\\/\\\\}
-    value=${value//&/\\&}
-    value=${value//|/\\|}
-    printf '%s' "$value"
-}
-
-escape_for_nix_sed() {
-    escape_sed_replacement "$(nix_escape "$1")"
-}
-
-validate_local_checkout_path() {
-    local checkout_path="$1"
-
-    if [ ! -d "$checkout_path" ]; then
-        echo "Mutable checkout path does not exist: $checkout_path" >&2
-        exit 1
-    fi
-
-    if [ ! -f "$checkout_path/flake.nix" ] || [ ! -f "$checkout_path/install.sh" ]; then
-        echo "Mutable checkout path must contain flake.nix and install.sh from this dotfiles repo: $checkout_path" >&2
-        exit 1
-    fi
-}
-
 default_username="${USER:-$(id -un)}"
-default_home="${HOME:-/home/$default_username}"
-default_state_version="25.11"
-dotfiles_url="$(resolve_dotfiles_url)"
-
-echo "Installing standalone Home Manager config from:"
-echo "  $dotfiles_url"
-echo
-
-username="$(prompt_with_default "Username" "$default_username")"
-home_directory="$(prompt_with_default "Home directory" "$default_home")"
-state_version="$(prompt_with_default "Home Manager state version" "$default_state_version")"
+default_home_directory="${HOME:-/home/$default_username}"
 default_system="$("${nix_cmd[@]}" eval --impure --raw --expr 'builtins.currentSystem')"
-system="$(prompt_with_default "System" "$default_system")"
-mutable="$(prompt_yes_no "Enable mutable mode" "false")"
-local_path=""
+dotfiles_url="${DOTFILES_INSTALL_DOTFILES_URL:-$(resolve_dotfiles_url)}"
+configuration_name="${DOTFILES_INSTALL_FLAKE_ATTR:-$default_username}"
+username="${DOTFILES_INSTALL_USERNAME:-$default_username}"
+home_directory="${DOTFILES_INSTALL_HOME_DIRECTORY:-$default_home_directory}"
+state_version="${DOTFILES_INSTALL_STATE_VERSION:-$default_state_version}"
+system="${DOTFILES_INSTALL_SYSTEM:-$default_system}"
+mutable="${DOTFILES_INSTALL_MUTABLE:-false}"
+local_path="${DOTFILES_INSTALL_LOCAL_PATH:-}"
 
 case "$mutable" in
-    true|false)
-        mutable_literal="$mutable"
-        ;;
+    true|false) ;;
     *)
-        echo "Invalid mutable mode value: $mutable" >&2
+        echo "DOTFILES_INSTALL_MUTABLE must be true or false, got: $mutable" >&2
         exit 1
         ;;
 esac
 
-if [ "$mutable" = "true" ]; then
-    if [[ "$dotfiles_url" == path:* ]]; then
-        local_checkout_path="${dotfiles_url#path:}"
-    else
-        local_checkout_path="$default_home/$default_mutable_checkout_subdir"
-    fi
-    local_path="$(prompt_with_default "Mutable checkout path" "$local_checkout_path")"
-    validate_local_checkout_path "$local_path"
+if [ "$mutable" = "true" ] && [ -z "$local_path" ] && [[ "$dotfiles_url" == path:* ]]; then
+    local_path="${dotfiles_url#path:}"
 fi
 
-temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX")"
-cleanup() {
-    rm -rf "$temp_dir"
-}
-trap cleanup EXIT
+if [ "$mutable" = "true" ] && [ -z "$local_path" ]; then
+    echo "DOTFILES_INSTALL_LOCAL_PATH is required when DOTFILES_INSTALL_MUTABLE=true." >&2
+    exit 1
+fi
 
-cat >"$temp_dir/flake.nix" <<'EOF'
+if [ "$mutable" = "true" ] && { [ ! -d "$local_path" ] || [ ! -f "$local_path/flake.nix" ] || [ ! -f "$local_path/install.sh" ]; }; then
+    echo "DOTFILES_INSTALL_LOCAL_PATH must point at a dotfiles checkout: $local_path" >&2
+    exit 1
+fi
+
+mkdir -p "$home_manager_dir"
+
+if [ ! -f "$flake_path" ]; then
+    echo "Creating initial Home Manager flake at: $flake_path"
+    cat >"$flake_path" <<EOF
 {
-  description = "Temporary installer for TheFurnace/dotfiles";
+  description = "Home Manager config for TheFurnace/dotfiles";
 
-  inputs = {
-    dotfiles.url = "__DOTFILES_URL__";
-    nixpkgs.follows = "dotfiles/nixpkgs";
-    home-manager.follows = "dotfiles/home-manager";
-  };
+  inputs.dotfiles.url = "$(nix_escape "$dotfiles_url")";
 
-  outputs = { dotfiles, home-manager, nixpkgs, ... }:
-    let
-      system = "__SYSTEM__";
-      homeManagerPackage =
-        if home-manager ? packages && builtins.hasAttr system home-manager.packages
-        then home-manager.packages.${system}.default
-        else home-manager.defaultPackage.${system};
-    in
-    {
-      homeConfigurations.installer = dotfiles.lib.mkHomeConfiguration {
-        inherit system;
-        username = "__USERNAME__";
-        homeDirectory = "__HOME_DIRECTORY__";
-        stateVersion = "__STATE_VERSION__";
-        mutable = __MUTABLE__;
-        localPath = "__LOCAL_PATH__";
-      };
-
-      packages.${system} = {
-        git-cli = nixpkgs.legacyPackages.${system}.git;
-        home-manager-cli = homeManagerPackage;
-      };
+  outputs = { dotfiles, ... }: {
+    homeConfigurations."$(nix_escape "$configuration_name")" = dotfiles.lib.mkHomeConfiguration {
+      system = "$(nix_escape "$system")";
+      username = "$(nix_escape "$username")";
+      homeDirectory = "$(nix_escape "$home_directory")";
+      stateVersion = "$(nix_escape "$state_version")";
+      mutable = $mutable;
+      localPath = "$(nix_escape "$local_path")";
     };
+  };
 }
 EOF
-
-dotfiles_url_escaped="$(escape_for_nix_sed "$dotfiles_url")"
-system_escaped="$(escape_for_nix_sed "$system")"
-username_escaped="$(escape_for_nix_sed "$username")"
-home_directory_escaped="$(escape_for_nix_sed "$home_directory")"
-state_version_escaped="$(escape_for_nix_sed "$state_version")"
-mutable_literal_escaped="$(escape_sed_replacement "$mutable_literal")"
-local_path_escaped="$(escape_for_nix_sed "$local_path")"
-
-sed \
-    -e "s|__DOTFILES_URL__|$dotfiles_url_escaped|g" \
-    -e "s|__SYSTEM__|$system_escaped|g" \
-    -e "s|__USERNAME__|$username_escaped|g" \
-    -e "s|__HOME_DIRECTORY__|$home_directory_escaped|g" \
-    -e "s|__STATE_VERSION__|$state_version_escaped|g" \
-    -e "s|__MUTABLE__|$mutable_literal_escaped|g" \
-    -e "s|__LOCAL_PATH__|$local_path_escaped|g" \
-    "$temp_dir/flake.nix" >"$temp_dir/flake.nix.tmp"
-
-mv "$temp_dir/flake.nix.tmp" "$temp_dir/flake.nix"
-
-echo
-echo "Configuration summary:"
-echo "  username:       $username"
-echo "  home directory: $home_directory"
-echo "  state version:  $state_version"
-echo "  system:         $system"
-echo "  mutable:        $mutable"
-if [ "$mutable" = "true" ]; then
-    echo "  local path:     $local_path"
-fi
-echo
-
-echo "Running nix flake check for: $dotfiles_url"
-"${nix_cmd[@]}" flake check "$dotfiles_url"
-
-echo "Building the generated Home Manager activation package..."
-"${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
-
-activate="$(prompt_yes_no "Activate this Home Manager configuration now" "false")"
-if [ "$activate" != "true" ]; then
-    echo "Skipping activation."
-    exit 0
+else
+    echo "Using existing Home Manager flake at: $flake_path"
 fi
 
-"${nix_cmd[@]}" shell \
-    "$temp_dir#git-cli" \
-    "$temp_dir#home-manager-cli" \
-    -c env NIX_CONFIG="$nix_cli_config" home-manager switch -b backup --flake "$temp_dir#installer"
+echo "Building Home Manager configuration: $configuration_name"
+home-manager build --flake "$home_manager_dir#$configuration_name"
+
+echo "Activating Home Manager configuration: $configuration_name"
+home-manager switch -b backup --flake "$home_manager_dir#$configuration_name"
+SCRIPT
+
+chmod +x "$temp_script"
+
+if command -v git >/dev/null 2>&1 && command -v home-manager >/dev/null 2>&1; then
+    exec env DOTFILES_INSTALL_SOURCE_DIR="$source_script_dir" bash "$temp_script" "$@"
+fi
+
+exec "${bootstrap_cmd[@]}" -c 'exec env DOTFILES_INSTALL_SOURCE_DIR="$1" bash "$2" "${@:3}"' bash "$source_script_dir" "$temp_script" "$@"

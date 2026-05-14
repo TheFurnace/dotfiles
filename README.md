@@ -177,20 +177,26 @@ So the setup is almost entirely plug-and-play, but changing the OS-level login s
 
 ### Quick install from this repository
 
-If the machine already has the Nix package manager installed, you can clone this repo and run:
+If the machine already has the Nix package manager installed, you can either clone this repo and run:
 
 ```bash
 ./install.sh
 ```
 
+or bootstrap it directly with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TheFurnace/dotfiles/main/install.sh | bash
+```
+
 The installer:
 
-- prompts for standalone Home Manager settings such as username, home directory, system, state version, and mutable mode
-- uses `nix-shell` to bootstrap `git` before any flake operations when it is not already installed
-- uses `nix shell` to provide `home-manager` during activation when it is not already installed
-- runs `nix flake check` for this repo
-- builds the generated Home Manager activation package
-- asks for confirmation before running `home-manager switch -b backup`
+- runs inside a Nix-provided shell with `git` and `home-manager`
+- creates `~/.config/home-manager/flake.nix` on the first run
+- reuses the existing `~/.config/home-manager/flake.nix` on later runs without overwriting it
+- builds and activates the Home Manager flake with `home-manager switch -b backup`
+
+The generated flake uses the current user, home directory, system, and state version defaults. To customize the first generated flake non-interactively, set environment variables such as `DOTFILES_INSTALL_USERNAME`, `DOTFILES_INSTALL_HOME_DIRECTORY`, `DOTFILES_INSTALL_STATE_VERSION`, `DOTFILES_INSTALL_SYSTEM`, `DOTFILES_INSTALL_MUTABLE`, `DOTFILES_INSTALL_LOCAL_PATH`, `DOTFILES_INSTALL_FLAKE_ATTR`, or `DOTFILES_INSTALL_DOTFILES_URL` before running the installer.
 
 ### Example
 
