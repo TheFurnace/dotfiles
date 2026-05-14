@@ -56,6 +56,10 @@
       devShellModule = import ./.flake-modules/dev-shell.nix {
         inherit nixpkgs exampleHomeConfiguration;
       };
+
+      installerModule = import ./.flake-modules/installer.nix {
+        inherit nixpkgs home-manager self;
+      };
     in
     {
       # Public helpers for downstream flakes.
@@ -70,5 +74,8 @@
 
       nixosConfigurations.example = exampleNixosConfiguration;
       devShells = devShellModule.devShells;
+
+      # `nix run github:TheFurnace/dotfiles` installer.
+      apps = installerModule.apps;
     };
 }
