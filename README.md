@@ -192,7 +192,7 @@ Or clone this repo and run:
 The installer:
 
 - prompts for standalone Home Manager settings such as username, home directory, system, state version, and mutable mode
-- uses `nix-shell` to provide `git` for flake operations when `git` is not already installed
+- assumes `git` is already available for flake operations
 - uses `nix shell` to provide `home-manager` during activation when it is not already installed
 - runs `nix flake check` for this repo
 - builds the generated Home Manager activation package

@@ -75,7 +75,7 @@ fi
 
 sudo debootstrap \
   --variant=minbase \
-  --include=ca-certificates,dbus,passwd,systemd-sysv,util-linux \
+  --include=ca-certificates,dbus,git,passwd,systemd-sysv,util-linux \
   "$ubuntu_release" \
   "$rootfs" \
   "$ubuntu_mirror"
@@ -130,6 +130,8 @@ set -euo pipefail
 : "${HOME:?}"
 
 export PATH="$CONTAINER_PATH"
+
+command -v git >/dev/null
 
 if [[ "$HOME" != "/home/dotfiles" ]]; then
   printf 'Expected HOME to be %s, got %s\n' "/home/dotfiles" "$HOME" >&2

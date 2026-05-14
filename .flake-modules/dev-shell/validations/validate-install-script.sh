@@ -27,11 +27,11 @@ required_path_commands=(
   bash
   cat
   dirname
+  git
   id
   mktemp
   mv
   nix
-  nix-shell
   rm
   sed
 )
@@ -77,7 +77,11 @@ if ! PATH="$safe_path" command -v nix >/dev/null 2>&1; then
   exit 1
 fi
 
-assert_command_absent git
+if ! PATH="$safe_path" command -v git >/dev/null 2>&1; then
+  echo "Expected git to be available in sanitized PATH: $safe_path" >&2
+  exit 1
+fi
+
 assert_command_absent home-manager
 
 install_default_system="$(

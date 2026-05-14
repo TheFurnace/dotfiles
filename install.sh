@@ -8,75 +8,16 @@ if [ -n "${NIX_CONFIG:-}" ]; then
     printf -v nix_cli_config '%s\n%s' "$NIX_CONFIG" "$nix_cli_config"
 fi
 default_mutable_checkout_subdir="dotfiles"
-bootstrap_nixpkgs_source=""
 
-resolve_bootstrap_nixpkgs_source() {
-    local lock_path="${1:-}"
-    local locked_rev=""
-
-    if [ -n "$lock_path" ] && [ -f "$lock_path" ]; then
-        locked_rev="$(
-            NIXPKGS_LOCK_PATH="$lock_path" \
-                "${nix_cmd[@]}" eval --raw --expr '
-                    let
-                      lock = builtins.fromJSON (builtins.readFile (builtins.getEnv "NIXPKGS_LOCK_PATH"));
-                    in
-                    lock.nodes.nixpkgs.locked.rev
-                ' 2>/dev/null || true
-        )"
-    fi
-
-    if [ -n "$locked_rev" ]; then
-        printf 'https://github.com/NixOS/nixpkgs/archive/%s.tar.gz\n' "$locked_rev"
-        return
-    fi
-
-    printf 'https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz\n'
-}
-
-resolve_local_lock_path() {
-    local script_path script_dir
-
-    script_path="${BASH_SOURCE[0]:-}"
-    if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
-        script_dir="$(cd "$(dirname "$script_path")" && pwd)"
-        if [ -f "$script_dir/flake.lock" ]; then
-            printf '%s\n' "$script_dir/flake.lock"
-            return
-        fi
-    fi
-}
-
-run_nix_command() {
-    local arg
-    local bootstrap_command
-    local -a quoted_args=()
-
-    if command -v git >/dev/null 2>&1; then
-        "${nix_cmd[@]}" "$@"
-        return
-    fi
-
-    if [ -z "$bootstrap_nixpkgs_source" ]; then
-        bootstrap_nixpkgs_source="$(resolve_bootstrap_nixpkgs_source "$(resolve_local_lock_path)")"
-    fi
-
-    for arg in "${nix_cmd[@]}" "$@"; do
-        printf -v arg '%q' "$arg"
-        quoted_args+=("$arg")
-    done
-    bootstrap_command="${quoted_args[*]}"
-    nix-shell \
-        --extra-experimental-features "nix-command flakes" \
-        -I "nixpkgs=$bootstrap_nixpkgs_source" \
-        -p git \
-        --run "$bootstrap_command"
-}
+if ! command -v git >/dev/null 2>&1; then
+    echo "git is required to run install.sh." >&2
+    exit 1
+fi
 
 resolve_dotfiles_url() {
     local script_path script_dir
 
-    script_path="${BASH_SOURCE[0]:-}"
+    script_path="${BASH_SOURCE[0]-}"
     if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
         script_dir="$(cd "$(dirname "$script_path")" && pwd)"
         if [ -f "$script_dir/flake.nix" ]; then
@@ -280,10 +221,10 @@ fi
 echo
 
 echo "Running nix flake check for: $dotfiles_url"
-run_nix_command flake check "$dotfiles_url"
+"${nix_cmd[@]}" flake check "$dotfiles_url"
 
 echo "Building the generated Home Manager activation package..."
-run_nix_command build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
+"${nix_cmd[@]}" build --no-link "$temp_dir#homeConfigurations.installer.activationPackage"
 
 activate="$(prompt_yes_no "Activate this Home Manager configuration now" "false")"
 if [ "$activate" != "true" ]; then
@@ -291,5 +232,5 @@ if [ "$activate" != "true" ]; then
     exit 0
 fi
 
-run_nix_command shell "$temp_dir#home-manager-cli" \
+"${nix_cmd[@]}" shell "$temp_dir#home-manager-cli" \
     -c env NIX_CONFIG="$nix_cli_config" home-manager switch -b backup --flake "$temp_dir#installer"
