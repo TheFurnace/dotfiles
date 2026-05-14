@@ -163,7 +163,7 @@ class TestRunner:
         if not summary_path:
             return
 
-        lines: list[str] = ["## nmt Test Results"]
+        lines: list[str] = ["## nmt Test Results", ""]
         lines.append("| Test | Result |")
         lines.append("|------|--------|")
         for test, passed in results:
@@ -180,8 +180,13 @@ class TestRunner:
             )
         lines.append("")
 
-        with open(summary_path, "a", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
+        content = "\n".join(lines) + "\n"
+        try:
+            with open(summary_path, "a", encoding="utf-8") as f:
+                f.write(content)
+            print(f"{INFO_EMOJI} Job summary written to: {summary_path}", file=sys.stderr)
+        except OSError as e:
+            print(f"{FAILURE_EMOJI} Failed to write job summary: {e}", file=sys.stderr)
 
 
 def main() -> None:
