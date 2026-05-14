@@ -65,6 +65,9 @@
       # Python runner and `nix flake check` can discover and build them.
       testSuite = import ./tests {
         inherit self nix-index-database home-manager pkgs;
+
+      installerModule = import ./.flake-modules/installer.nix {
+        inherit nixpkgs home-manager self;
       };
     in
     {
@@ -91,5 +94,8 @@
       # Runnable test-runner script: `nix run .#packages.x86_64-linux.tests`
       packages.${defaultSystem}.tests =
         pkgs.callPackage ./tests/package.nix { flake = self; };
+
+      # `nix run github:TheFurnace/dotfiles` installer.
+      apps = installerModule.apps;
     };
 }

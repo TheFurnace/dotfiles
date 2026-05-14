@@ -164,6 +164,27 @@ If your NixOS user has a nonstandard home directory, also set `dotfiles.homeDire
 
 ## Non-NixOS or standalone Home Manager
 
+### Quick install
+
+Run the installer directly from this flake — no local clone required:
+
+```bash
+nix run github:TheFurnace/dotfiles
+```
+
+The installer detects your username and home directory automatically, writes an
+ephemeral `flake.nix`, and runs `home-manager switch` to activate the
+environment.
+
+#### Environment overrides
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DOTFILES_USER` | `$USER` / `id -un` | Unix username for the Home Manager profile |
+| `DOTFILES_HOME` | `$HOME` | Absolute path to your home directory |
+| `DOTFILES_STATE_VERSION` | `25.11` | Home Manager state version |
+| `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .#default`) |
+
 On non-NixOS, use `dotfiles.homeManagerModules.default`.
 
 This installs the same user environment, enables `programs.home-manager`, and wires fish + oh-my-posh automatically, but there is one platform limitation to be aware of:
