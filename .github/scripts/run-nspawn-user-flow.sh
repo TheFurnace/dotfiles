@@ -238,23 +238,25 @@ run_in_machine \
   HOST_UID="$host_user_uid" \
   HOST_GID="$host_user_gid" \
   /bin/bash "$container_script_path"
+machinectl_shell_command=(
+  sudo machinectl shell
+  --quiet
+  --uid="$container_user"
+  --setenv=DOTFILES_REPO="$repo_root"
+  --setenv=CONTAINER_PATH="$container_path"
+  --setenv=PATH="$container_path"
+  --setenv=TERM="xterm-256color"
+  --setenv=XDG_RUNTIME_DIR="/run/user/$host_user_uid"
+  --setenv=NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+  --setenv=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+  "$machine_name"
+  /bin/bash "$container_home/run-user-flow.sh"
+)
 script \
   --quiet \
   --return \
   --flush \
-  --command "$(printf '%q ' \
-    sudo machinectl shell \
-      --quiet \
-      --uid="$container_user" \
-      --setenv=DOTFILES_REPO="$repo_root" \
-      --setenv=CONTAINER_PATH="$container_path" \
-      --setenv=PATH="$container_path" \
-      --setenv=TERM="xterm-256color" \
-      --setenv=XDG_RUNTIME_DIR="/run/user/$host_user_uid" \
-      --setenv=NIX_SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-      --setenv=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-      "$machine_name" \
-      /bin/bash "$container_home/run-user-flow.sh")" \
+  --command "$(printf '%q ' "${machinectl_shell_command[@]}")" \
   /dev/null
 run_in_machine grep -aFq "Running nix flake check for:" "$container_home/install-transcript.txt"
 run_in_machine grep -aFq "Building the generated Home Manager activation package..." "$container_home/install-transcript.txt"
