@@ -34,8 +34,14 @@ resolve_bootstrap_nixpkgs_source() {
     printf 'https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz\n'
 }
 
+bootstrap_tmp_script_var="DOTFILES_INSTALL_BOOTSTRAP_TMP_SCRIPT"
+
 ensure_script_dependencies() {
     if command -v git >/dev/null 2>&1; then
+        # Clean up any temp script left by a previous stdin-mode bootstrap re-exec.
+        if [ -n "${!bootstrap_tmp_script_var:-}" ] && [ -f "${!bootstrap_tmp_script_var}" ]; then
+            rm -f "${!bootstrap_tmp_script_var}"
+        fi
         return
     fi
 
@@ -47,9 +53,31 @@ ensure_script_dependencies() {
     local bash_bin script_path bootstrap_command nixpkgs_source
 
     bash_bin="$(command -v bash)"
-    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+        # Direct file execution: bash /path/to/install.sh
+        script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    else
+        # Stdin/piped execution (e.g. bash < install.sh or curl ... | bash).
+        # On Linux, bash dups the script file descriptor to fd 255.  If that fd
+        # resolves to a regular file, copy it to a neutral temp directory so the
+        # re-exec does not accidentally find an adjacent flake.nix and resolve a
+        # local path.  On non-Linux systems /proc/self/fd/255 is unavailable;
+        # users must ensure git is in PATH or run the script as a file argument.
+        local fd255_path
+        fd255_path="$(readlink -f /proc/self/fd/255 2>/dev/null || true)"
+        if [ -f "$fd255_path" ]; then
+            local tmp_script
+            tmp_script="$(mktemp "${TMPDIR:-/tmp}/dotfiles-install.XXXXXX.sh")"
+            cp "$fd255_path" "$tmp_script"
+            script_path="$tmp_script"
+        else
+            echo "Bootstrap required: git not found in PATH, and script path cannot be determined for re-exec." >&2
+            echo "Please ensure git is in PATH, or run directly: bash /path/to/install.sh" >&2
+            exit 1
+        fi
+    fi
     nixpkgs_source="$(resolve_bootstrap_nixpkgs_source "$(dirname "$script_path")/flake.lock")"
-    printf -v bootstrap_command '%q ' env "$bootstrap_guard_var=1" "$bash_bin" "$script_path" "$@"
+    printf -v bootstrap_command '%q ' env "$bootstrap_guard_var=1" "$bootstrap_tmp_script_var=$script_path" "$bash_bin" "$script_path" "$@"
 
     exec nix-shell \
         --extra-experimental-features "nix-command flakes" \

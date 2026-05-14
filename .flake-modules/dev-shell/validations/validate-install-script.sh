@@ -115,13 +115,14 @@ answers_file="$test_root/install-answers.txt"
 install_command_script="$test_root/run-install-command.sh"
 cat >"$install_command_script" <<'EOF'
 #!/usr/bin/env bash
+# Simulate curl/stdin execution: feed install.sh via stdin rather than as a
+# script path argument, so that BASH_SOURCE[0] is empty inside the installer.
 exec env -i \
   HOME="$INSTALL_TEST_HOME" \
   PATH="$INSTALL_TEST_PATH" \
   TMPDIR="$INSTALL_TEST_HOME" \
   USER="$INSTALL_DEFAULT_USERNAME" \
-  "$INSTALL_SCRIPT_BASH" \
-  "$INSTALL_SCRIPT"
+  "$INSTALL_SCRIPT_BASH" < "$INSTALL_SCRIPT"
 EOF
 chmod +x "$install_command_script"
 
@@ -147,7 +148,11 @@ grep -Fq "home directory: $INSTALL_DEFAULT_HOME" "$transcript"
 grep -Fq "state version:  $INSTALL_DEFAULT_STATE_VERSION" "$transcript"
 grep -Fq "system:         $INSTALL_DEFAULT_SYSTEM" "$transcript"
 grep -Fq "mutable:        false" "$transcript"
-grep -Fq "Running nix flake check for: path:$DOTFILES_REPO" "$transcript"
+grep -Fq "Running nix flake check for: github:TheFurnace/dotfiles" "$transcript"
+if grep -Fq "Running nix flake check for: path:$DOTFILES_REPO" "$transcript"; then
+  echo "FAIL: installer incorrectly resolved to local checkout path during stdin/curl-like flow." >&2
+  exit 1
+fi
 grep -Fq "Building the generated Home Manager activation package..." "$transcript"
 grep -Fq "Activate this Home Manager configuration now [y/N]:" "$transcript"
 grep -Fq "Skipping activation." "$transcript"

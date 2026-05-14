@@ -117,7 +117,9 @@ cat >"$CONTAINER_HOME/run-install.sh" <<'SCRIPT'
 #!/bin/bash
 set -euo pipefail
 
-exec bash "$DOTFILES_REPO/install.sh"
+# Simulate curl/stdin execution: feed install.sh via stdin so that
+# BASH_SOURCE[0] is empty inside the installer, matching `curl <url> | bash`.
+exec bash < "$DOTFILES_REPO/install.sh"
 SCRIPT
 
 cat >"$CONTAINER_HOME/run-user-flow.sh" <<'SCRIPT'
@@ -156,7 +158,11 @@ script \
   <"$HOME/install-answers.txt"
 
 require_transcript_line "Installing standalone Home Manager config from:" >/dev/null
-require_transcript_line "Running nix flake check for:" >/dev/null
+require_transcript_line "Running nix flake check for: github:TheFurnace/dotfiles" >/dev/null
+if grep -aFq "Running nix flake check for: path:" "$HOME/install-transcript.txt"; then
+  echo "install.sh incorrectly resolved to a local checkout path during stdin/curl-like flow." >&2
+  exit 1
+fi
 require_transcript_line "Building the generated Home Manager activation package..." >/dev/null
 require_transcript_line "Activate this Home Manager configuration now [y/N]:" >/dev/null
 require_transcript_line "Starting Home Manager activation" >/dev/null
@@ -167,7 +173,7 @@ if grep -aFq "Skipping activation." "$HOME/install-transcript.txt"; then
 fi
 
 echo "Validated install transcript markers:"
-require_transcript_line "Running nix flake check for:"
+require_transcript_line "Running nix flake check for: github:TheFurnace/dotfiles"
 require_transcript_line "Building the generated Home Manager activation package..."
 require_transcript_line "Activate this Home Manager configuration now [y/N]:"
 require_transcript_line "Starting Home Manager activation"
@@ -258,7 +264,11 @@ script \
   --flush \
   --command "$(printf '%q ' "${machinectl_shell_command[@]}")" \
   /dev/null
-run_in_machine grep -aFq "Running nix flake check for:" "$container_home/install-transcript.txt"
+run_in_machine grep -aFq "Running nix flake check for: github:TheFurnace/dotfiles" "$container_home/install-transcript.txt"
+if run_in_machine grep -aFq "Running nix flake check for: path:" "$container_home/install-transcript.txt" 2>/dev/null; then
+  echo "FAIL: installer incorrectly resolved to a local checkout path during stdin/curl-like flow." >&2
+  exit 1
+fi
 run_in_machine grep -aFq "Building the generated Home Manager activation package..." "$container_home/install-transcript.txt"
 run_in_machine grep -aFq "Activate this Home Manager configuration now [y/N]:" "$container_home/install-transcript.txt"
 run_in_machine grep -aFq "Starting Home Manager activation" "$container_home/install-transcript.txt"
