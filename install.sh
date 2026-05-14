@@ -36,7 +36,7 @@ resolve_bootstrap_nixpkgs_source() {
 resolve_local_lock_path() {
     local script_path script_dir
 
-    script_path="${BASH_SOURCE[0]-}"
+    script_path="${BASH_SOURCE[0]:-}"
     if [ -n "$script_path" ] && [ "$script_path" != "bash" ] && [ -e "$script_path" ]; then
         script_dir="$(cd "$(dirname "$script_path")" && pwd)"
         if [ -f "$script_dir/flake.lock" ]; then
@@ -47,12 +47,13 @@ resolve_local_lock_path() {
 }
 
 run_nix_command() {
+    local bootstrap_command
+
     if command -v git >/dev/null 2>&1; then
         "${nix_cmd[@]}" "$@"
         return
     fi
 
-    local bootstrap_command
     printf -v bootstrap_command '%q ' "${nix_cmd[@]}" "$@"
     nix-shell \
         --extra-experimental-features "nix-command flakes" \
