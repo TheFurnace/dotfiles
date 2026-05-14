@@ -33,11 +33,10 @@
 }:
 
 let
-  # Mirror what home-manager.lib.homeManagerConfiguration does: extend lib
-  # with the `hm` attribute that modules such as activation.nix rely on.
-  lib = pkgs.lib.extend (self: _: {
-    hm = import "${home-manager}/lib" { lib = self; };
-  });
+  # Use Home Manager's own stdlib-extended.nix so that lib.hm (including
+  # lib.hm.deprecations, lib.hm.maintainers, etc.) is fully populated — the
+  # same way HM's own test suite wires lib before passing it to nmt.
+  lib = import "${home-manager}/modules/lib/stdlib-extended.nix" pkgs.lib;
 
   nmtSrc = builtins.fetchTarball {
     url = "https://git.sr.ht/~rycee/nmt/archive/v0.5.1.tar.gz";
@@ -61,17 +60,28 @@ let
   # Base module applied to every test. Sets the minimum option values required
   # by the dotfiles module so individual test files only declare what they
   # change.
-  baseTestModule = { lib, ... }: {
-    _module.args.pkgs = lib.mkForce pkgs;
-    dotfiles = {
-      enable = lib.mkDefault false;
-      username = lib.mkDefault "test-user";
-      homeDirectory = lib.mkDefault "/home/test-user";
+  baseTestModule = { lib, ... }:
+    let
+      testUser = "test-user";
+      testHome = "/home/test-user";
+    in
+    {
+      _module.args.pkgs = lib.mkForce pkgs;
+      # dotfiles.* options are required (no defaults); set them here so tests
+      # that enable the module don't have to repeat them.
+      dotfiles = {
+        enable = lib.mkDefault false;
+        username = lib.mkDefault testUser;
+        homeDirectory = lib.mkDefault testHome;
+      };
+      # home.username/homeDirectory must always be defined; base.nix only
+      # propagates from dotfiles.* when dotfiles.enable = true.
+      home.username = lib.mkDefault testUser;
+      home.homeDirectory = lib.mkDefault testHome;
+      home.stateVersion = lib.mkDefault "25.11";
+      # Suppress the manpage build; it causes unnecessary rebuilds in tests.
+      manual.manpages.enable = lib.mkDefault false;
     };
-    home.stateVersion = lib.mkDefault "25.11";
-    # Suppress the manpage build; it causes unnecessary rebuilds in tests.
-    manual.manpages.enable = lib.mkDefault false;
-  };
 
   modules = hmModules ++ [ dotfilesModule baseTestModule ];
 

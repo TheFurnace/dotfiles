@@ -75,7 +75,9 @@ class TestRunner:
     """Discovers and runs nmt tests exposed through the flake's legacyPackages."""
 
     def __init__(self, repo_root: Path | None = None):
-        self.repo_root = repo_root or Path.cwd()
+        # Default to the flake root (parent of this script's directory) so the
+        # runner works correctly when invoked via `nix run` from any directory.
+        self.repo_root = repo_root or Path(__file__).parent.parent
 
     def get_current_system(self) -> str:
         result = _run_command(

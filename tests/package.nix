@@ -13,6 +13,7 @@ writeShellApplication {
     '';
   };
   text = ''
+    cd ${flake}
     exec python3 ${flake}/tests/tests.py "$@"
   '';
 }
