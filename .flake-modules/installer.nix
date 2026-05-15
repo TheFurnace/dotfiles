@@ -36,7 +36,7 @@ let
 
       installer = pkgs.writeShellApplication {
         name = "install-dotfiles";
-        runtimeInputs = [ pkgs.nix hmPackage ];
+        runtimeInputs = [ pkgs.nix pkgs.git hmPackage ];
         text = ''
           # ── resolve identity ────────────────────────────────────────────────
           DOTFILES_USER="''${DOTFILES_USER:-''${USER:-$(id -un)}}"
