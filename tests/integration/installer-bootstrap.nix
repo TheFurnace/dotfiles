@@ -1,14 +1,13 @@
 # End-to-end VM test for the `nix run github:TheFurnace/dotfiles` installer.
 #
-# Unlike the nmt suite under ../modules/, this exercises the actual
-# user-facing bootstrap flow:
+# Exercises the actual user-facing bootstrap flow:
 #
-#   1. boot a NixOS VM with a normal user `alice`
-#   2. point the `dotfiles` flake registry entry at the local checkout
-#   3. run `nix run dotfiles` as alice (the installer in .flake-modules/installer.nix)
-#   4. assert that Home Manager activation produced the expected profile,
+#   1. boot a NixOS VM (shared base module + alice user from ./lib.nix)
+#   2. run `nix run dotfiles` as alice — the installer's flake registry
+#      alias resolves to the local checkout
+#   3. assert that Home Manager activation produced the expected profile,
 #      gcroot, and config-file symlinks
-#   5. re-run the installer and confirm idempotent behaviour
+#   4. re-run the installer and confirm idempotent behaviour
 #
 # To run directly:
 #
@@ -17,90 +16,31 @@
 { pkgs, self, home-manager, nixpkgs }:
 
 let
-  inherit (pkgs) lib;
-
-  system = pkgs.stdenv.hostPlatform.system;
+  helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs; };
+  inherit (helpers) makeTest baseModule aliceModule system;
 
   # Pre-build the Home Manager activation package that the installer will
-  # construct inside the VM.  Because the ephemeral flake the installer writes
+  # construct inside the VM. Because the ephemeral flake the installer writes
   # uses the same `self.lib.mkHomeConfiguration` entrypoint and the same
-  # nixpkgs/home-manager inputs (pinned via the registry below), the store
-  # paths should match and the VM never needs to reach the network to perform
-  # the switch.
+  # nixpkgs/home-manager inputs (pinned via the registry in baseModule),
+  # the store paths should match and the VM never needs to reach the network
+  # to perform the switch.
   aliceHomeConfig = self.lib.mkHomeConfiguration {
     inherit system;
     username = "alice";
     homeDirectory = "/home/alice";
     stateVersion = "25.11";
   };
-
-  nixosLib = import "${nixpkgs}/nixos/lib" { };
 in
-nixosLib.runTest {
+makeTest {
   name = "dotfiles-installer-bootstrap";
-  hostPkgs = pkgs;
 
-  nodes.machine = { config, ... }: {
-    imports = [
-      "${nixpkgs}/nixos/modules/installer/cd-dvd/channel.nix"
-    ];
+  nodes.machine = { ... }: {
+    imports = [ baseModule aliceModule ];
 
-    virtualisation = {
-      # Home Manager activation evaluates a fair amount of Nix; give the VM
-      # enough headroom to avoid OOM during `home-manager switch`.
-      memorySize = 4096;
-      diskSize = 8192;
-      cores = 2;
-    };
-
-    nix = {
-      # Resolve the flake refs used by the installer to local store paths so
-      # the test can run without network access.  `dotfiles` is the alias the
-      # installer ephemeral flake references (via DOTFILES_URL=dotfiles).
-      registry = {
-        dotfiles.to = {
-          type = "path";
-          path = "${self}";
-        };
-        nixpkgs.to = lib.mkForce {
-          type = "path";
-          path = "${nixpkgs}";
-        };
-        home-manager.to = {
-          type = "path";
-          path = "${home-manager}";
-        };
-      };
-
-      settings = {
-        experimental-features = [ "nix-command" "flakes" ];
-        # Deny network substituters; the test must be self-contained.
-        substituters = lib.mkForce [ ];
-        trusted-substituters = lib.mkForce [ ];
-      };
-    };
-
-    # Pre-seed the store with everything the installer's ephemeral flake will
-    # need at build/eval time so `nix run dotfiles` completes offline.
-    system.extraDependencies = [
-      self
-      nixpkgs.outPath
-      home-manager.outPath
-      aliceHomeConfig.activationPackage
-      home-manager.packages.${system}.home-manager
-    ];
-
-    users.users.alice = {
-      isNormalUser = true;
-      description = "Alice";
-      password = "foobar";
-      uid = 1000;
-      home = "/home/alice";
-    };
-
-    # Autologin alice on tty1 so a real user session (with XDG_RUNTIME_DIR
-    # and a user systemd instance) is available for Home Manager activation.
-    services.getty.autologinUser = "alice";
+    # Append the pre-built alice activation package so the offline run can
+    # realize it without network access.
+    system.extraDependencies = [ aliceHomeConfig.activationPackage ];
   };
 
   testScript = ''
