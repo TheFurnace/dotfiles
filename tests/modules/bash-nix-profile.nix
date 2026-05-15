@@ -2,19 +2,25 @@
 # ~/.bash_profile.  In standalone mode (no NixOS integration), that file
 # must source the Nix profile script so that ~/.nix-profile/bin is present
 # in PATH for login shells.
+#
+# Home Manager's bash module places profileExtra in ~/.profile, which
+# ~/.bash_profile sources unconditionally.
 {
   dotfiles.enable = true;
 
   nmt.script = ''
+    # Confirm Home Manager is managing both files.
     assertFileExists home-files/.bash_profile
+    assertFileExists home-files/.profile
 
-    # Single-user path must be sourced unconditionally (the guard is in the
-    # shell snippet itself, not in Nix).
-    grep -q 'nix-profile/etc/profile.d/nix\.sh' home-files/.bash_profile \
-      || fail "~/.bash_profile does not source ~/.nix-profile/etc/profile.d/nix.sh"
+    # ~/.bash_profile must delegate to ~/.profile (HM's standard wiring).
+    assertFileContains home-files/.bash_profile '. ~/.profile'
 
-    # The /etc/profile.d fallback for multi-user Nix installs must also be present.
-    grep -q '/etc/profile\.d/nix\.sh' home-files/.bash_profile \
-      || fail "~/.bash_profile does not source /etc/profile.d/nix.sh"
+    # ~/.profile must source the single-user Nix profile path.
+    assertFileContains home-files/.profile 'nix-profile/etc/profile.d/nix.sh'
+
+    # ~/.profile must also include the /etc/profile.d fallback for multi-user
+    # Nix installs.
+    assertFileContains home-files/.profile '/etc/profile.d/nix.sh'
   '';
 }
