@@ -20,3 +20,31 @@ jobs:
 
       - name: Run nmt tests
         run: python3 tests/tests.py
+
+  installer-bootstrap:
+    name: installer bootstrap VM test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            experimental-features = nix-command flakes
+            system-features = nixos-test benchmark big-parallel kvm
+
+      - name: Enable KVM access for the runner
+        # GitHub-hosted ubuntu-latest runners expose /dev/kvm but the device
+        # node isn't world-accessible by default. Loosen permissions so the
+        # nix-daemon's build user can open it when launching the VM.
+        run: |
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: Build installer-bootstrap VM test
+        run: nix build --print-build-logs .#checks.x86_64-linux.installer-bootstrap
