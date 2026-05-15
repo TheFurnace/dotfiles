@@ -4,4 +4,5 @@
 {
   dotfiles-disabled = ./dotfiles-disabled.nix;
   dotfiles-config-files = ./dotfiles-config-files.nix;
+  bash-nix-profile-path = ./bash-nix-profile-path.nix;
 }
