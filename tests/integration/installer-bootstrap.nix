@@ -3,8 +3,9 @@
 # Exercises the actual user-facing bootstrap flow:
 #
 #   1. boot a NixOS VM (shared base module + alice user from ./lib.nix)
-#   2. run `nix run dotfiles` as alice — the installer's flake registry
-#      alias resolves to the local checkout
+#   2. run the installer as alice with DOTFILES_URL / DOTFILES_NIXPKGS_URL /
+#      DOTFILES_HOME_MANAGER_URL pointed at the local store paths of this
+#      flake's own inputs so the ephemeral flake locks reproducibly
 #   3. assert that Home Manager activation produced the expected profile,
 #      gcroot, and config-file symlinks
 #   4. re-run the installer and confirm idempotent behaviour
@@ -58,7 +59,7 @@ makeTest {
         return machine.succeed(alice_cmd(cmd))
 
     installer_env = (
-        "DOTFILES_URL=dotfiles "
+        "DOTFILES_URL=path:${self} "
         "DOTFILES_NIXPKGS_URL=path:${nixpkgs} "
         "DOTFILES_HOME_MANAGER_URL=path:${home-manager} "
         "DOTFILES_USER=alice "
