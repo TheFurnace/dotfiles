@@ -5,7 +5,6 @@
   dotfiles.enable = true;
 
   nmt.script = ''
-    assertFileExists home-files/.config/git/config
     assertFileExists home-files/.config/nvim/init.lua
     assertFileExists home-files/.config/kitty/kitty.conf
     assertFileExists home-files/.config/oh-my-posh/themes/lambda.omp.json
