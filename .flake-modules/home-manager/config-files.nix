@@ -38,7 +38,6 @@ in
     # Treat .config/ in this repo as the canonical source of truth for config
     # file contents. New files are discovered on the next evaluation.
     xdg.configFile =
-      configFilesFrom "git" "git/" //
       configFilesFrom "kitty" "kitty/" //
       configFilesFrom "nvim" "nvim/" //
       configFilesFrom "oh-my-posh" "oh-my-posh/" //
