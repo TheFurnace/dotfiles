@@ -103,7 +103,7 @@
       packages.${defaultSystem}.tests =
         pkgs.callPackage ./tests/package.nix { flake = self; };
 
-      # `nix run github:TheFurnace/dotfiles` installer.
+      # `nix run github:TheFurnace/dotfiles -- init [--switch]` installer.
       apps = installerModule.apps;
 
       # Surface the integration tests so `nix flake check` runs them and

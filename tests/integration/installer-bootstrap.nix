@@ -1,14 +1,15 @@
-# End-to-end VM test for the `nix run github:TheFurnace/dotfiles` installer.
+# End-to-end VM test for the `nix run github:TheFurnace/dotfiles -- init` installer.
 #
 # Exercises the actual user-facing bootstrap flow:
 #
 #   1. boot a NixOS VM (shared base module + alice user from ./lib.nix)
 #   2. run the installer as alice with DOTFILES_URL / DOTFILES_NIXPKGS_URL /
 #      DOTFILES_HOME_MANAGER_URL pointed at the local store paths of this
-#      flake's own inputs so the ephemeral flake locks reproducibly
-#   3. assert that Home Manager activation produced the expected profile,
+#      flake's own inputs so the written flake locks reproducibly
+#   3. assert that the flake was written to $XDG_CONFIG_HOME/home-manager/
+#   4. assert that Home Manager activation produced the expected profile,
 #      gcroot, and config-file symlinks
-#   4. re-run the installer and confirm idempotent behaviour
+#   5. re-run the installer and confirm idempotent behaviour
 #
 # To run directly:
 #
@@ -68,7 +69,12 @@ makeTest {
     )
 
     with subtest("nix run installer completes successfully"):
-        succeed_as_alice(f"{installer_env} nix run dotfiles")
+        succeed_as_alice(f"{installer_env} nix run dotfiles -- init --switch")
+
+    with subtest("Home Manager flake was written to XDG config home"):
+        machine.succeed(
+            "test -f /home/alice/.config/home-manager/flake.nix"
+        )
 
     with subtest("Home Manager profile and gcroot exist"):
         machine.succeed(
@@ -100,7 +106,7 @@ makeTest {
         first_gen = machine.succeed(
             "readlink /home/alice/.local/state/home-manager/gcroots/current-home"
         ).strip()
-        succeed_as_alice(f"{installer_env} nix run dotfiles")
+        succeed_as_alice(f"{installer_env} nix run dotfiles -- init --switch")
         second_gen = machine.succeed(
             "readlink /home/alice/.local/state/home-manager/gcroots/current-home"
         ).strip()
