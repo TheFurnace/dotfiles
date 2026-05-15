@@ -7,4 +7,5 @@
   dotfiles-git = ./dotfiles-git.nix;
   dotfiles-osc-9-9 = ./dotfiles-osc-9-9.nix;
   dotfiles-xdg = ./dotfiles-xdg.nix;
+  gh-credential-helper = ./gh-credential-helper.nix;
 }
