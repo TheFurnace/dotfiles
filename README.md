@@ -9,7 +9,7 @@ Plug-and-play dotfiles for Home Manager and NixOS.
   - [Example](#example)
   - [Mutable mode on NixOS](#mutable-mode-on-nixos)
 - [Non-NixOS or standalone Home Manager](#non-nixos-or-standalone-home-manager)
-  - [Quick install from this repository](#quick-install-from-this-repository)
+  - [Quick install](#quick-install)
   - [Example](#example-1)
   - [One-time login shell step on non-NixOS](#one-time-login-shell-step-on-non-nixos)
 - [Standalone configs bundled in this repo](#standalone-configs-bundled-in-this-repo)
@@ -18,6 +18,7 @@ Plug-and-play dotfiles for Home Manager and NixOS.
   - [Home Manager module: `homeManagerModules.default`](#home-manager-module-homemanagermodulesdefault)
   - [NixOS module: `nixosModules.default`](#nixos-module-nixosmodulesdefault)
 - [Updating this flake when used as an input](#updating-this-flake-when-used-as-an-input)
+- [Testing](#testing)
 - [Development shell](#development-shell)
 - [Notes](#notes)
 
@@ -184,6 +185,8 @@ environment.
 | `DOTFILES_HOME` | `$HOME` | Absolute path to your home directory |
 | `DOTFILES_STATE_VERSION` | `25.11` | Home Manager state version |
 | `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .#default`) |
+| `DOTFILES_NIXPKGS_URL` | `github:NixOS/nixpkgs/nixos-unstable` | nixpkgs flake URL used by the ephemeral installer flake |
+| `DOTFILES_HOME_MANAGER_URL` | `git+https://github.com/nix-community/home-manager` | home-manager flake URL used by the ephemeral installer flake |
 
 On non-NixOS, use `dotfiles.homeManagerModules.default`.
 
@@ -367,6 +370,35 @@ nix flake update dotfiles
 Then rebuild with either `nixos-rebuild` or `home-manager switch`, depending on how you consume it.
 
 ---
+
+## Testing
+
+This flake includes an [nmt](https://git.sr.ht/~rycee/nmt) unit test suite and a NixOS VM integration test for the installer.
+
+**Run unit tests:**
+
+```bash
+nix run .#packages.x86_64-linux.tests
+```
+
+Pass `-l` to list all available tests, or a substring to filter by name:
+
+```bash
+nix run .#packages.x86_64-linux.tests -- -l
+nix run .#packages.x86_64-linux.tests -- config
+```
+
+**Run the installer integration test (NixOS VM):**
+
+```bash
+nix build .#checks.x86_64-linux.installer-bootstrap
+```
+
+**Run all checks at once:**
+
+```bash
+nix flake check
+```
 
 ## Development shell
 
