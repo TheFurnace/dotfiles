@@ -4,4 +4,5 @@
 {
   dotfiles-disabled = ./dotfiles-disabled.nix;
   dotfiles-config-files = ./dotfiles-config-files.nix;
+  gh-credential-helper = ./gh-credential-helper.nix;
 }
