@@ -17,7 +17,7 @@
     assertFileContains home-files/.bash_profile '. ~/.profile'
 
     # ~/.profile must source the single-user Nix profile path.
-    assertFileContains home-files/.profile 'nix-profile/etc/profile.d/nix.sh'
+    assertFileContains home-files/.profile '$HOME/.nix-profile/etc/profile.d/nix.sh'
 
     # ~/.profile must also include the /etc/profile.d fallback for multi-user
     # Nix installs.
