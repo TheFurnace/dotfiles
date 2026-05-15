@@ -29,3 +29,12 @@ function which {
     Get-Command $Name -All |
         Select-Object CommandType, Name, Source
 }
+
+# Wrap the active prompt to also emit OSC 9;9 for Windows Terminal CWD tracking.
+# This is placed last so it captures whatever prompt function is active after all
+# shell integrations (oh-my-posh, etc.) have been initialised.
+$__prevPrompt = $function:prompt
+function prompt {
+    [Console]::Write("`e]9;9;$($PWD.Path)`a")
+    & $__prevPrompt
+}
