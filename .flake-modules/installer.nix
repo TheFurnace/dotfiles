@@ -84,6 +84,16 @@ let
           DOTFILES_NIXPKGS_URL="''${DOTFILES_NIXPKGS_URL:-github:NixOS/nixpkgs/nixos-unstable}"
           DOTFILES_HOME_MANAGER_URL="''${DOTFILES_HOME_MANAGER_URL:-git+https://github.com/nix-community/home-manager}"
 
+          # ── detect non-NixOS Linux ───────────────────────────────────────────
+          # /etc/NIXOS is the canonical marker for a NixOS system.
+          # targets.genericLinux.enable is only meaningful on Linux, not Darwin.
+          EXTRA_MODULES_BLOCK=""
+          if [ "$(uname -s)" = "Linux" ] && [ ! -e /etc/NIXOS ]; then
+            EXTRA_MODULES_BLOCK='                  extraModules = [
+                    { targets.genericLinux.enable = true; }
+                  ];'
+          fi
+
           echo "Installing dotfiles for user: $DOTFILES_USER"
           echo "Home directory:               $DOTFILES_HOME"
           echo "State version:                $DOTFILES_STATE_VERSION"
@@ -123,6 +133,7 @@ let
                   username      = "$DOTFILES_USER";
                   homeDirectory = "$DOTFILES_HOME";
                   stateVersion  = "$DOTFILES_STATE_VERSION";
+$EXTRA_MODULES_BLOCK
                 };
             };
           }
