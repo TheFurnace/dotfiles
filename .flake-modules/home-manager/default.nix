@@ -4,6 +4,7 @@
   imports = [
     ./options.nix
     ./base.nix
+    ./xdg.nix
     (import ./packages.nix)
     (import ./programs.nix { inherit nix-index-database; })
     ./fish
