@@ -7,9 +7,10 @@
 #   * `makeTest` — `nixosLib.runTest` with `hostPkgs` already wired up.
 #   * `baseModule` — a NixOS module that points the `dotfiles`/`nixpkgs`/
 #     `home-manager` flake registry entries at local store paths, enables
-#     flakes, disables network substituters, pre-seeds the store with the
-#     dotfiles + HM CLI closures, and gives the VM enough RAM/disk to run
-#     Home Manager activation offline.
+#     flakes, pre-seeds the store with the dotfiles + HM CLI closures, and
+#     gives the VM enough RAM/disk to run Home Manager activation. Anything
+#     else the installer's ephemeral flake transitively needs is fetched
+#     from the default substituter (cache.nixos.org) via QEMU's NAT.
 #   * `aliceModule` — a normal user `alice` (uid 1000, /home/alice) with
 #     autologin on tty1, so user-scoped commands like `nix run dotfiles`
 #     have a real session to run in.
@@ -52,9 +53,11 @@ let
     };
 
     nix = {
-      # Resolve the flake refs used by the installer to local store paths so
-      # the test can run without network access. `dotfiles` is the alias the
-      # installer's ephemeral flake references (via DOTFILES_URL=dotfiles).
+      # Resolve the flake refs used by the installer to local store paths to
+      # avoid hitting the network for the dotfiles/nixpkgs/HM sources. The
+      # installer's ephemeral flake references these via DOTFILES_URL=dotfiles
+      # and the DOTFILES_NIXPKGS_URL / DOTFILES_HOME_MANAGER_URL overrides
+      # that point at `${nixpkgs}` / `${home-manager}`.
       registry = {
         dotfiles.to = {
           type = "path";
@@ -72,16 +75,17 @@ let
 
       settings = {
         experimental-features = [ "nix-command" "flakes" ];
-        # Deny network substituters; integration tests must be self-contained.
-        substituters = lib.mkForce [ ];
-        trusted-substituters = lib.mkForce [ ];
       };
     };
 
     # Pre-seed the store with everything the installer's ephemeral flake will
-    # need at evaluation time. Individual tests can append test-specific
-    # closures (e.g. a pre-built activation package) via the standard list
-    # merge on `system.extraDependencies`.
+    # need at evaluation time. This avoids fetching the dotfiles/nixpkgs/HM
+    # sources from the network at test time. Anything else (derivations the
+    # installer's ephemeral lockfile resolves to that aren't in this closure)
+    # can still be fetched from the configured substituter (cache.nixos.org)
+    # via the VM's default NAT'd networking — making this test resilient to
+    # subtle evaluation differences between the host-side pre-build and the
+    # VM-side `dotfiles.lib.mkHomeConfiguration` invocation.
     system.extraDependencies = [
       self
       nixpkgs.outPath

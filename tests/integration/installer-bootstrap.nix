@@ -20,11 +20,10 @@ let
   inherit (helpers) makeTest baseModule aliceModule system;
 
   # Pre-build the Home Manager activation package that the installer will
-  # construct inside the VM. Because the ephemeral flake the installer writes
-  # uses the same `self.lib.mkHomeConfiguration` entrypoint and the same
-  # nixpkgs/home-manager inputs (pinned via the registry in baseModule),
-  # the store paths should match and the VM never needs to reach the network
-  # to perform the switch.
+  # construct inside the VM. Seeding its closure into the VM avoids the
+  # majority of substituter traffic when the installer runs — anything the
+  # in-VM evaluation derives that doesn't already exist in this closure can
+  # still be fetched from the default substituter via NAT.
   aliceHomeConfig = self.lib.mkHomeConfiguration {
     inherit system;
     username = "alice";
@@ -38,8 +37,8 @@ makeTest {
   nodes.machine = { ... }: {
     imports = [ baseModule aliceModule ];
 
-    # Append the pre-built alice activation package so the offline run can
-    # realize it without network access.
+    # Append the pre-built alice activation package so the bulk of the
+    # closure is already in the VM store before activation runs.
     system.extraDependencies = [ aliceHomeConfig.activationPackage ];
   };
 
