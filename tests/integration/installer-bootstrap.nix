@@ -60,6 +60,8 @@ makeTest {
 
     installer_env = (
         "DOTFILES_URL=dotfiles "
+        "DOTFILES_NIXPKGS_URL=path:${nixpkgs} "
+        "DOTFILES_HOME_MANAGER_URL=path:${home-manager} "
         "DOTFILES_USER=alice "
         "DOTFILES_HOME=/home/alice "
         "DOTFILES_STATE_VERSION=25.11"
