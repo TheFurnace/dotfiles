@@ -89,9 +89,7 @@ let
           # targets.genericLinux.enable is only meaningful on Linux, not Darwin.
           EXTRA_MODULES_BLOCK=""
           if [ "$(uname -s)" = "Linux" ] && [ ! -e /etc/NIXOS ]; then
-            EXTRA_MODULES_BLOCK='                  extraModules = [
-                    { targets.genericLinux.enable = true; }
-                  ];'
+            EXTRA_MODULES_BLOCK=$(printf '        extraModules = [\n          { targets.genericLinux.enable = true; }\n        ];')
           fi
 
           echo "Installing dotfiles for user: $DOTFILES_USER"
@@ -133,7 +131,7 @@ let
                   username      = "$DOTFILES_USER";
                   homeDirectory = "$DOTFILES_HOME";
                   stateVersion  = "$DOTFILES_STATE_VERSION";
-$EXTRA_MODULES_BLOCK
+          $EXTRA_MODULES_BLOCK
                 };
             };
           }
