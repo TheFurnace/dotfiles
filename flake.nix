@@ -70,6 +70,13 @@
       installerModule = import ./.flake-modules/installer.nix {
         inherit nixpkgs home-manager self;
       };
+
+      # NixOS VM integration tests.  Kept separate from the nmt suite above
+      # because they boot real machines and exercise the user-facing
+      # bootstrap flow end-to-end.
+      integrationTests = import ./tests/integration {
+        inherit pkgs self home-manager nixpkgs;
+      };
     in
     {
       # Public helpers for downstream flakes.
@@ -98,5 +105,9 @@
 
       # `nix run github:TheFurnace/dotfiles` installer.
       apps = installerModule.apps;
+
+      # Surface the integration tests so `nix flake check` runs them and
+      # `nix build .#checks.x86_64-linux.<name>` works for ad-hoc invocation.
+      checks.${defaultSystem} = integrationTests;
     };
 }

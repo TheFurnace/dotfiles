@@ -4,13 +4,19 @@
 #   nix run github:TheFurnace/dotfiles
 #
 # Environment overrides (all optional):
-#   DOTFILES_USER          — username  (default: $USER or `id -un`)
-#   DOTFILES_HOME          — home dir  (default: $HOME)
-#   DOTFILES_STATE_VERSION — Home Manager state version (default: 25.11)
-#   DOTFILES_URL           — flake URL for the dotfiles input
-#                            (default: github:TheFurnace/dotfiles)
-#                            Override to a local path for development:
-#                              DOTFILES_URL=/path/to/checkout nix run .#default
+#   DOTFILES_USER              — username  (default: $USER or `id -un`)
+#   DOTFILES_HOME              — home dir  (default: $HOME)
+#   DOTFILES_STATE_VERSION     — Home Manager state version (default: 25.11)
+#   DOTFILES_URL               — flake URL for the dotfiles input
+#                                (default: github:TheFurnace/dotfiles)
+#                                Override to a local path for development:
+#                                  DOTFILES_URL=/path/to/checkout nix run .#default
+#   DOTFILES_NIXPKGS_URL       — flake URL for the nixpkgs input the
+#                                ephemeral flake pulls in
+#                                (default: github:NixOS/nixpkgs/nixos-unstable)
+#   DOTFILES_HOME_MANAGER_URL  — flake URL for the home-manager input the
+#                                ephemeral flake pulls in
+#                                (default: git+https://github.com/nix-community/home-manager)
 { nixpkgs, home-manager, self }:
 let
   systems = [
@@ -30,13 +36,15 @@ let
 
       installer = pkgs.writeShellApplication {
         name = "install-dotfiles";
-        runtimeInputs = [ pkgs.nix hmPackage ];
+        runtimeInputs = [ pkgs.nix pkgs.git hmPackage ];
         text = ''
           # ── resolve identity ────────────────────────────────────────────────
           DOTFILES_USER="''${DOTFILES_USER:-''${USER:-$(id -un)}}"
           DOTFILES_HOME="''${DOTFILES_HOME:-$HOME}"
           DOTFILES_STATE_VERSION="''${DOTFILES_STATE_VERSION:-25.11}"
           DOTFILES_URL="''${DOTFILES_URL:-github:TheFurnace/dotfiles}"
+          DOTFILES_NIXPKGS_URL="''${DOTFILES_NIXPKGS_URL:-github:NixOS/nixpkgs/nixos-unstable}"
+          DOTFILES_HOME_MANAGER_URL="''${DOTFILES_HOME_MANAGER_URL:-git+https://github.com/nix-community/home-manager}"
 
           echo "Installing dotfiles for user: $DOTFILES_USER"
           echo "Home directory:               $DOTFILES_HOME"
@@ -53,10 +61,10 @@ let
             description = "Ephemeral dotfiles installer";
 
             inputs = {
-              nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+              nixpkgs.url = "$DOTFILES_NIXPKGS_URL";
 
               home-manager = {
-                url = "git+https://github.com/nix-community/home-manager";
+                url = "$DOTFILES_HOME_MANAGER_URL";
                 inputs.nixpkgs.follows = "nixpkgs";
               };
 
