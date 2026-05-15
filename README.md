@@ -170,12 +170,32 @@ If your NixOS user has a nonstandard home directory, also set `dotfiles.homeDire
 Run the installer directly from this flake — no local clone required:
 
 ```bash
-nix run github:TheFurnace/dotfiles
+nix run github:TheFurnace/dotfiles -- init
 ```
 
-The installer detects your username and home directory automatically, writes an
-ephemeral `flake.nix`, and runs `home-manager switch` to activate the
-environment.
+This writes `$XDG_CONFIG_HOME/home-manager/flake.nix` (typically
+`~/.config/home-manager/flake.nix`) wired to pull in this flake's Home Manager
+module.  It mirrors the `home-manager init` pattern so you can inspect or
+customise the generated flake before activating.
+
+If a `flake.nix` already exists at that path, `init` skips writing and leaves
+the existing file untouched.  Delete it first if you want to regenerate from
+scratch.
+
+Once you are happy with the flake, activate with:
+
+```bash
+home-manager switch -b backup --flake ~/.config/home-manager#<your-username>
+```
+
+Or, to write the flake **and** immediately activate the environment in one step
+(skips writing if the file already exists):
+
+```bash
+nix run github:TheFurnace/dotfiles -- init --switch
+```
+
+The installer detects your username and home directory automatically.
 
 #### Environment overrides
 

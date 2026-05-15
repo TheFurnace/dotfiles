@@ -1,7 +1,11 @@
 # Builds the `nix run` installer app for all supported platforms.
 #
 # Usage:
-#   nix run github:TheFurnace/dotfiles
+#   nix run github:TheFurnace/dotfiles -- init
+#     Write $XDG_CONFIG_HOME/home-manager/flake.nix (no activation).
+#
+#   nix run github:TheFurnace/dotfiles -- init --switch
+#     Write the flake and immediately run `home-manager switch` to activate.
 #
 # Environment overrides (all optional):
 #   DOTFILES_USER              — username  (default: $USER or `id -un`)
@@ -38,6 +42,40 @@ let
         name = "install-dotfiles";
         runtimeInputs = [ pkgs.nix pkgs.git hmPackage ];
         text = ''
+          # ── usage ───────────────────────────────────────────────────────────
+          usage() {
+            echo "Usage: nix run github:TheFurnace/dotfiles -- <command> [options]"
+            echo ""
+            echo "Commands:"
+            echo "  init            Write \$XDG_CONFIG_HOME/home-manager/flake.nix"
+            echo "  init --switch   Write the flake and activate with home-manager switch"
+          }
+
+          # ── parse subcommand ─────────────────────────────────────────────────
+          SUBCOMMAND="''${1:-}"
+          shift || true
+
+          case "$SUBCOMMAND" in
+            init) ;;
+            *)
+              usage
+              exit 1
+              ;;
+          esac
+
+          # ── parse flags ──────────────────────────────────────────────────────
+          DO_SWITCH=false
+          for arg in "$@"; do
+            case "$arg" in
+              --switch) DO_SWITCH=true ;;
+              *)
+                echo "Unknown option: $arg"
+                usage
+                exit 1
+                ;;
+            esac
+          done
+
           # ── resolve identity ────────────────────────────────────────────────
           DOTFILES_USER="''${DOTFILES_USER:-''${USER:-$(id -un)}}"
           DOTFILES_HOME="''${DOTFILES_HOME:-$HOME}"
@@ -52,13 +90,18 @@ let
           echo "Dotfiles source:              $DOTFILES_URL"
           echo ""
 
-          # ── write an ephemeral flake that wires the dotfiles module ─────────
-          WORK_DIR="$(mktemp -d)"
-          trap 'rm -rf "$WORK_DIR"' EXIT
+          # ── write flake to XDG config home ──────────────────────────────────
+          HM_CONFIG_DIR="''${XDG_CONFIG_HOME:-$DOTFILES_HOME/.config}/home-manager"
+          mkdir -p "$HM_CONFIG_DIR"
+          FLAKE_PATH="$HM_CONFIG_DIR/flake.nix"
 
-          cat > "$WORK_DIR/flake.nix" <<FLAKE
+          if [ -e "$FLAKE_PATH" ]; then
+            echo "flake.nix already exists at $FLAKE_PATH — skipping write."
+            echo "Delete it first if you want to regenerate."
+          else
+            cat > "$FLAKE_PATH" <<FLAKE
           {
-            description = "Ephemeral dotfiles installer";
+            description = "Home Manager configuration for $DOTFILES_USER";
 
             inputs = {
               nixpkgs.url = "$DOTFILES_NIXPKGS_URL";
@@ -85,8 +128,13 @@ let
           }
           FLAKE
 
-          # ── activate ────────────────────────────────────────────────────────
-          home-manager switch -b backup --flake "$WORK_DIR#$DOTFILES_USER"
+            echo "Wrote $FLAKE_PATH"
+          fi
+
+          # ── activate (only with --switch) ────────────────────────────────────
+          if $DO_SWITCH; then
+            home-manager switch -b backup --flake "$HM_CONFIG_DIR#$DOTFILES_USER"
+          fi
         '';
       };
     in
