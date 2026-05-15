@@ -22,6 +22,9 @@ in
         fi
 
         source <(${pkgs.nix-your-shell}/bin/nix-your-shell bash)
+
+        __update_cwd_osc() { printf '\033]9;9;%s\007' "$PWD"; }
+        PROMPT_COMMAND="__update_cwd_osc''${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
       '';
     };
 
