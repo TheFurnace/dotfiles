@@ -1,0 +1,23 @@
+name: Fast Forward Merge
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  fast-forward:
+    name: fast forward merge
+    # Only run when a collaborator or owner comments /fast-forward on a PR
+    if: >-
+      github.event.issue.pull_request != '' &&
+      startsWith(github.event.comment.body, '/fast-forward') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fast forward
+        uses: sequoia-pgp/fast-forward@v1.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
