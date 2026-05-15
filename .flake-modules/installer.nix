@@ -138,6 +138,19 @@ let
           FLAKE
 
             echo "Wrote $FLAKE_PATH"
+
+            # Initialise a git repository and commit the generated flake so
+            # that subsequent `home-manager switch` runs evaluate the flake
+            # from a clean git tree, suppressing Nix's "Git tree is dirty"
+            # warning.  All steps are best-effort so a failure here does not
+            # abort the installer.
+            git -C "$HM_CONFIG_DIR" init -q || true
+            nix flake lock "$HM_CONFIG_DIR" || true
+            git -C "$HM_CONFIG_DIR" add flake.nix flake.lock 2>/dev/null || true
+            git -C "$HM_CONFIG_DIR" \
+              -c user.name="home-manager" \
+              -c user.email="home-manager@localhost" \
+              commit -q -m "feat: init home-manager flake" 2>/dev/null || true
           fi
 
           # ── activate (only with --switch) ────────────────────────────────────
