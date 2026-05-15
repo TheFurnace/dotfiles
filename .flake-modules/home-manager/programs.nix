@@ -16,6 +16,16 @@ in
 
     programs.bash = {
       enable = true;
+      profileExtra = lib.optionalString isStandaloneHomeManager ''
+        # Home Manager owns ~/.bash_profile, so the Nix installer's own
+        # profile snippet is no longer sourced automatically.  Re-source it
+        # here so that ~/.nix-profile/bin is always in PATH for login shells.
+        if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+          . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+        elif [ -e /etc/profile.d/nix.sh ]; then
+          . /etc/profile.d/nix.sh
+        fi
+      '';
       initExtra = ''
         if [ -f ~/.config/oh-my-posh/themes/lambda.omp.json ]; then
           eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init bash --config ~/.config/oh-my-posh/themes/lambda.omp.json)"
