@@ -18,7 +18,6 @@ Plug-and-play dotfiles for Home Manager and NixOS.
   - [Home Manager module: `homeManagerModules.default`](#home-manager-module-homemanagermodulesdefault)
   - [NixOS module: `nixosModules.default`](#nixos-module-nixosmodulesdefault)
 - [Updating this flake when used as an input](#updating-this-flake-when-used-as-an-input)
-- [Helper scripts](#helper-scripts)
 - [Development shell](#development-shell)
 - [Notes](#notes)
 
@@ -37,7 +36,6 @@ The module installs or enables everything needed for the environment in this rep
 - `oh-my-posh`
 - `git`
 - `kitty`
-- `just`
 - `neovim`
 - `direnv` + `nix-direnv`
 - `nix-index-database` + `comma`
@@ -166,6 +164,27 @@ If your NixOS user has a nonstandard home directory, also set `dotfiles.homeDire
 
 ## Non-NixOS or standalone Home Manager
 
+### Quick install
+
+Run the installer directly from this flake — no local clone required:
+
+```bash
+nix run github:TheFurnace/dotfiles
+```
+
+The installer detects your username and home directory automatically, writes an
+ephemeral `flake.nix`, and runs `home-manager switch` to activate the
+environment.
+
+#### Environment overrides
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DOTFILES_USER` | `$USER` / `id -un` | Unix username for the Home Manager profile |
+| `DOTFILES_HOME` | `$HOME` | Absolute path to your home directory |
+| `DOTFILES_STATE_VERSION` | `25.11` | Home Manager state version |
+| `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .#default`) |
+
 On non-NixOS, use `dotfiles.homeManagerModules.default`.
 
 This installs the same user environment, enables `programs.home-manager`, and wires fish + oh-my-posh automatically, but there is one platform limitation to be aware of:
@@ -174,29 +193,6 @@ This installs the same user environment, enables `programs.home-manager`, and wi
 - Home Manager cannot reliably change the system login shell on non-NixOS by itself
 
 So the setup is almost entirely plug-and-play, but changing the OS-level login shell is still a one-time system step outside Home Manager.
-
-### Quick install from this repository
-
-If the machine already has the Nix package manager installed, you can either run the installer directly from GitHub:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TheFurnace/dotfiles/main/install.sh | bash
-```
-
-Or clone this repo and run:
-
-```bash
-./install.sh
-```
-
-The installer:
-
-- prompts for standalone Home Manager settings such as username, home directory, system, state version, and mutable mode
-- assumes `git` is already available for flake operations
-- uses `nix shell` to provide `home-manager` during activation when it is not already installed
-- runs `nix flake check` for this repo
-- builds the generated Home Manager activation package
-- asks for confirmation before running `home-manager switch -b backup`
 
 ### Example
 
@@ -372,36 +368,13 @@ Then rebuild with either `nixos-rebuild` or `home-manager switch`, depending on 
 
 ---
 
-## Helper scripts
-
-For mutable-mode workflows from a local checkout, this repo also includes a `justfile`:
-
-```bash
-just link-config
-just pull-config
-just pull-config-apply
-```
-
-Recipes:
-
-- `just install` — runs `./install.sh` to build and optionally activate a standalone Home Manager config from this checkout
-- `just link-config` — runs `./setup.sh` to symlink files from this repo's `.config/` into `~/.config`
-- `just pull-config [path ...]` — dry-run by default; shows which regular files exist in managed `~/.config/<name>` subtrees but not yet in this repo's `.config/`
-- `just pull-config-apply [path ...]` — copies those new regular files into this repo's `.config/`, stages them in git, and preserves paths
-
-`pull-config` accepts absolute paths or paths relative to `~/.config/`, but only under top-level entries that already exist in this repo's `.config/` and actually contain files in the repo. With no paths, it scans only those matching managed subtrees.
-
 ## Development shell
 
-For repo-local validation work, this flake exposes a single dev shell:
+This flake exposes a dev shell that prepares a temporary `$HOME` pointing the relevant tools at this checkout's `.config/`:
 
 ```bash
 nix develop .#default
 ```
-
-The shell prepares a temporary `$HOME` that points the relevant tools at this checkout's `.config/`.
-
-- `nix develop .#default` — CI/local validation shell with `nix` and `validate-dotfiles-config`
 
 ## Notes
 
