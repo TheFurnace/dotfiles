@@ -95,7 +95,11 @@ let
           mkdir -p "$HM_CONFIG_DIR"
           FLAKE_PATH="$HM_CONFIG_DIR/flake.nix"
 
-          cat > "$FLAKE_PATH" <<FLAKE
+          if [ -e "$FLAKE_PATH" ]; then
+            echo "flake.nix already exists at $FLAKE_PATH — skipping write."
+            echo "Delete it first if you want to regenerate."
+          else
+            cat > "$FLAKE_PATH" <<FLAKE
           {
             description = "Home Manager configuration for $DOTFILES_USER";
 
@@ -124,7 +128,8 @@ let
           }
           FLAKE
 
-          echo "Wrote $FLAKE_PATH"
+            echo "Wrote $FLAKE_PATH"
+          fi
 
           # ── activate (only with --switch) ────────────────────────────────────
           if $DO_SWITCH; then

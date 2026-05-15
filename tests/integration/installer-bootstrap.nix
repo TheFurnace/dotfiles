@@ -68,7 +68,19 @@ makeTest {
         "DOTFILES_STATE_VERSION=25.11"
     )
 
+    with subtest("plain init writes the flake without activating"):
+        succeed_as_alice(f"{installer_env} nix run dotfiles -- init")
+        machine.succeed("test -f /home/alice/.config/home-manager/flake.nix")
+        # No activation should have happened yet.
+        machine.fail(
+            "test -e /home/alice/.local/state/nix/profiles/home-manager"
+        )
+        machine.fail(
+            "test -L /home/alice/.local/state/home-manager/gcroots/current-home"
+        )
+
     with subtest("nix run installer completes successfully"):
+        # Flake already exists from plain init; init --switch should reuse it.
         succeed_as_alice(f"{installer_env} nix run dotfiles -- init --switch")
 
     with subtest("Home Manager flake was written to XDG config home"):
