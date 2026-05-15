@@ -1,5 +1,5 @@
-# When dotfiles.enable = true each interactive shell emits OSC 9;9 so that
-# Windows Terminal can track the current working directory.
+# When dotfiles.enable = true bash, fish, and PowerShell interactive shells emit
+# OSC 9;9 so that Windows Terminal can track the current working directory.
 {
   dotfiles.enable = true;
 
