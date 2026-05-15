@@ -8,7 +8,7 @@ in
       enable = true;
       interactiveShellInit = ''
         function __update_cwd_osc --on-event fish_prompt
-            printf '\e]9;9;%s\a' "$PWD"
+            printf '\e]9;9;%s\a' $PWD
         end
       '';
     };
