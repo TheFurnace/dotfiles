@@ -45,6 +45,9 @@ vim.pack.add({
     src = "https://github.com/stevearc/oil.nvim",
   },
   {
+    src = "https://github.com/sitiom/nvim-numbertoggle",
+  },
+  {
     src = "https://github.com/cohama/lexima.vim",
   },
 }, {
