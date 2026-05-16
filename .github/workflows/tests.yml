@@ -2,9 +2,9 @@ name: Tests
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 jobs:
   skip-check:
@@ -17,6 +17,7 @@ jobs:
         uses: fkirc/skip-duplicate-actions@v5
         with:
           concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
 
   changes:
     name: detect changed paths
