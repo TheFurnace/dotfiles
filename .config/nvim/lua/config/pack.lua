@@ -50,6 +50,10 @@ vim.pack.add({
   {
     src = "https://github.com/cohama/lexima.vim",
   },
+  {
+    src = "https://github.com/kylechui/nvim-surround",
+    version = vim.version.range('*'),
+  },
 }, {
   confirm = false,
 })
