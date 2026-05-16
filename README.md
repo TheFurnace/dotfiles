@@ -336,6 +336,7 @@ The helper also supports:
 - `mutable`
 - `localPath`
 - `extraModules`
+- `extraSpecialArgs`
 
 ## NixOS helper options: `lib.mkNixosConfiguration`
 
@@ -351,6 +352,7 @@ The helper also supports:
 - `localPath`
 - `user` for extra `users.users.<name>` fields
 - `extraModules`
+- `extraSpecialArgs`
 
 ---
 
