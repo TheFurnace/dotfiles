@@ -49,7 +49,7 @@ vim.api.nvim_create_autocmd("FileType", {
       return
     end
 
-    if ft ~= "python" and ft ~= "css" then
+    if ft ~= "python" and ft ~= "css" and ft ~= "nix" then
       vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
     end
   end,
