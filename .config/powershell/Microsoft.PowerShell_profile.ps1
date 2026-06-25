@@ -4,7 +4,7 @@ if (Test-Path $ompConfig) {
     oh-my-posh init pwsh --config $ompConfig | Invoke-Expression
 }
 
-zoxide init powershell | Invoke-Expression
+zoxide init powershell | Out-String | Invoke-Expression
 
 if (Get-Module -ListAvailable git-completion) {
     Import-Module git-completion
