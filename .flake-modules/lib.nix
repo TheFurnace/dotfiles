@@ -14,9 +14,11 @@ in
     mutable ? false,
     localPath ? "",
     extraModules ? [ ],
+    extraSpecialArgs ? { },
   }:
     home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.${system};
+      inherit extraSpecialArgs;
       modules = [
         # Compose the reusable module with the minimal option values that every
         # concrete Home Manager configuration must provide.
@@ -45,6 +47,7 @@ in
     localPath ? "",
     user ? { },
     extraModules ? [ ],
+    extraSpecialArgs ? { },
   }:
     let
       # Keep the user's home path consistent across users.users and the nested
@@ -56,6 +59,7 @@ in
     in
     nixpkgs.lib.nixosSystem {
       inherit system;
+      specialArgs = extraSpecialArgs;
       modules = [
         # Compose the reusable NixOS module with a small host-specific shim.
         nixosModule
