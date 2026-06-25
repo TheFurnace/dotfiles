@@ -30,4 +30,6 @@ vim.lsp.config("roslyn", {
   end,
 })
 
+-- roslyn.setup() activates the plugin, which calls vim.lsp.enable("roslyn") internally.
+-- The vim.lsp.config call above registers our capabilities/on_attach before that happens.
 roslyn.setup({})
