@@ -54,6 +54,9 @@ vim.pack.add({
     src = "https://github.com/kylechui/nvim-surround",
     version = vim.version.range('*'),
   },
+  {
+    src = "https://github.com/seblyng/roslyn.nvim",
+  },
 }, {
   confirm = false,
 })
