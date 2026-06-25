@@ -1,3 +1,8 @@
+local ok_roslyn, roslyn = pcall(require, "roslyn")
+if not ok_roslyn then
+  return
+end
+
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 local ok_cmp_lsp, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
 
@@ -25,7 +30,4 @@ vim.lsp.config("roslyn", {
   end,
 })
 
-local ok_roslyn, roslyn = pcall(require, "roslyn")
-if ok_roslyn then
-  roslyn.setup({})
-end
+roslyn.setup({})
