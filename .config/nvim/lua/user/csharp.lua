@@ -1,5 +1,8 @@
 local ok_roslyn, roslyn = pcall(require, "roslyn")
 if not ok_roslyn then
+  if not roslyn:find("module 'roslyn' not found", 1, true) then
+    vim.notify(string.format("Failed to load roslyn: %s", roslyn), vim.log.levels.WARN)
+  end
   return
 end
 
