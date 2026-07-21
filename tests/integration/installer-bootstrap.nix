@@ -44,6 +44,7 @@ makeTest {
     # closure is already in the VM store before activation runs.
     system.extraDependencies = [
       aliceHomeConfig.activationPackage
+      aliceHomeConfig.config.home.path
       installerProgram
     ];
   };
