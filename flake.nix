@@ -75,7 +75,7 @@
       # because they boot real machines and exercise the user-facing
       # bootstrap flow end-to-end.
       integrationTests = import ./tests/integration {
-        inherit pkgs self home-manager nixpkgs;
+        inherit pkgs self home-manager nixpkgs nix-index-database;
       };
     in
     {

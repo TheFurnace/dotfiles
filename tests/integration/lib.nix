@@ -30,7 +30,7 @@
 #     };
 #     testScript = "...";
 #   }
-{ pkgs, self, home-manager, nixpkgs }:
+{ pkgs, self, home-manager, nixpkgs, nix-index-database }:
 
 let
   inherit (pkgs) lib;
@@ -71,6 +71,10 @@ let
           type = "path";
           path = "${home-manager}";
         };
+        nix-index-database.to = {
+          type = "path";
+          path = "${nix-index-database}";
+        };
       };
 
       settings = {
@@ -93,6 +97,7 @@ let
       self
       nixpkgs.outPath
       home-manager.outPath
+      nix-index-database.outPath
       home-manager.packages.${system}.home-manager
     ];
   };

@@ -15,10 +15,10 @@
 #
 #   nix build .#checks.x86_64-linux.installer-bootstrap
 #
-{ pkgs, self, home-manager, nixpkgs }:
+{ pkgs, self, home-manager, nixpkgs, nix-index-database }:
 
 let
-  helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs; };
+  helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs nix-index-database; };
   inherit (helpers) makeTest baseModule aliceModule system;
   installerProgram = self.apps.${system}.default.program;
 
