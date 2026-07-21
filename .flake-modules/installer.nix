@@ -15,12 +15,12 @@
 #                                (default: github:TheFurnace/dotfiles)
 #                                Override to a local path for development:
 #                                  DOTFILES_URL=/path/to/checkout nix run .#default
-#   DOTFILES_NIXPKGS_URL       — flake URL for the nixpkgs input the
-#                                ephemeral flake pulls in
-#                                (default: github:NixOS/nixpkgs/nixos-unstable)
-#   DOTFILES_HOME_MANAGER_URL  — flake URL for the home-manager input the
-#                                ephemeral flake pulls in
-#                                (default: git+https://github.com/nix-community/home-manager)
+#   DOTFILES_NIXPKGS_URL       — optional nixpkgs flake URL override.
+#                                When unset, the generated flake follows
+#                                dotfiles/nixpkgs (pinned by dotfiles.lock).
+#   DOTFILES_HOME_MANAGER_URL  — optional home-manager flake URL override.
+#                                When unset, the generated flake follows
+#                                dotfiles/home-manager (pinned by dotfiles.lock).
 { nixpkgs, home-manager, self }:
 let
   systems = [
@@ -81,8 +81,28 @@ let
           DOTFILES_HOME="''${DOTFILES_HOME:-$HOME}"
           DOTFILES_STATE_VERSION="''${DOTFILES_STATE_VERSION:-25.11}"
           DOTFILES_URL="''${DOTFILES_URL:-github:TheFurnace/dotfiles}"
-          DOTFILES_NIXPKGS_URL="''${DOTFILES_NIXPKGS_URL:-github:NixOS/nixpkgs/nixos-unstable}"
-          DOTFILES_HOME_MANAGER_URL="''${DOTFILES_HOME_MANAGER_URL:-git+https://github.com/nix-community/home-manager}"
+          DOTFILES_NIXPKGS_URL="''${DOTFILES_NIXPKGS_URL:-}"
+          DOTFILES_HOME_MANAGER_URL="''${DOTFILES_HOME_MANAGER_URL:-}"
+
+          # By default, reuse the dotfiles input lock for nixpkgs and
+          # home-manager. Callers can override either input explicitly.
+          NIXPKGS_INPUT_BLOCK='nixpkgs.follows = "dotfiles/nixpkgs";'
+          DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK=""
+          if [ -n "$DOTFILES_NIXPKGS_URL" ]; then
+            NIXPKGS_INPUT_BLOCK=$(printf 'nixpkgs.url = "%s";' "$DOTFILES_NIXPKGS_URL")
+            DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK='inputs.nixpkgs.follows = "nixpkgs";'
+          fi
+
+          HOME_MANAGER_INPUT_BLOCK='home-manager.follows = "dotfiles/home-manager";'
+          if [ -n "$DOTFILES_HOME_MANAGER_URL" ]; then
+            HOME_MANAGER_INPUT_BLOCK="$(
+              printf '%s\n' \
+                'home-manager = {' \
+                "  url = \"$DOTFILES_HOME_MANAGER_URL\";" \
+                '  inputs.nixpkgs.follows = "nixpkgs";' \
+                '};'
+            )"
+          fi
 
           # ── detect non-NixOS Linux ───────────────────────────────────────────
           # /etc/NIXOS is the canonical marker for a NixOS system.
@@ -112,16 +132,13 @@ let
             description = "Home Manager configuration for $DOTFILES_USER";
 
             inputs = {
-              nixpkgs.url = "$DOTFILES_NIXPKGS_URL";
+              $NIXPKGS_INPUT_BLOCK
 
-              home-manager = {
-                url = "$DOTFILES_HOME_MANAGER_URL";
-                inputs.nixpkgs.follows = "nixpkgs";
-              };
+              $HOME_MANAGER_INPUT_BLOCK
 
               dotfiles = {
                 url = "$DOTFILES_URL";
-                inputs.nixpkgs.follows = "nixpkgs";
+                $DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK
               };
             };
 

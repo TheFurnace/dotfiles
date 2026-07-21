@@ -15,11 +15,12 @@
 #
 #   nix build .#checks.x86_64-linux.installer-bootstrap
 #
-{ pkgs, self, home-manager, nixpkgs }:
+{ pkgs, self, home-manager, nixpkgs, nix-index-database }:
 
 let
-  helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs; };
+  helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs nix-index-database; };
   inherit (helpers) makeTest baseModule aliceModule system;
+  installerProgram = self.apps.${system}.default.program;
 
   # Pre-build the Home Manager activation package that the installer will
   # construct inside the VM. Seeding its closure into the VM avoids the
@@ -41,7 +42,11 @@ makeTest {
 
     # Append the pre-built alice activation package so the bulk of the
     # closure is already in the VM store before activation runs.
-    system.extraDependencies = [ aliceHomeConfig.activationPackage ];
+    system.extraDependencies = [
+      aliceHomeConfig.activationPackage
+      aliceHomeConfig.config.home.path
+      installerProgram
+    ];
   };
 
   testScript = ''

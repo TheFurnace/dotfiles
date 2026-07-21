@@ -205,8 +205,8 @@ The installer detects your username and home directory automatically.
 | `DOTFILES_HOME` | `$HOME` | Absolute path to your home directory |
 | `DOTFILES_STATE_VERSION` | `25.11` | Home Manager state version |
 | `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .#default`) |
-| `DOTFILES_NIXPKGS_URL` | `github:NixOS/nixpkgs/nixos-unstable` | nixpkgs flake URL used by the ephemeral installer flake |
-| `DOTFILES_HOME_MANAGER_URL` | `git+https://github.com/nix-community/home-manager` | home-manager flake URL used by the ephemeral installer flake |
+| `DOTFILES_NIXPKGS_URL` | _(unset)_ | Optional nixpkgs override for the installer flake. When unset, the generated flake follows `dotfiles/nixpkgs` from the dotfiles lock file. |
+| `DOTFILES_HOME_MANAGER_URL` | _(unset)_ | Optional home-manager override for the installer flake. When unset, the generated flake follows `dotfiles/home-manager` from the dotfiles lock file. |
 
 On non-NixOS, use `dotfiles.homeManagerModules.default`.
 
