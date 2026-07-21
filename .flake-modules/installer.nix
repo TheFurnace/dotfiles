@@ -87,10 +87,10 @@ let
           # By default, reuse the dotfiles input lock for nixpkgs and
           # home-manager. Callers can override either input explicitly.
           NIXPKGS_INPUT_BLOCK='nixpkgs.follows = "dotfiles/nixpkgs";'
-          DOTFILES_NIXPKGS_FOLLOWS_BLOCK=""
+          DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK=""
           if [ -n "$DOTFILES_NIXPKGS_URL" ]; then
             NIXPKGS_INPUT_BLOCK=$(printf 'nixpkgs.url = "%s";' "$DOTFILES_NIXPKGS_URL")
-            DOTFILES_NIXPKGS_FOLLOWS_BLOCK='inputs.nixpkgs.follows = "nixpkgs";'
+            DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK='inputs.nixpkgs.follows = "nixpkgs";'
           fi
 
           HOME_MANAGER_INPUT_BLOCK='home-manager.follows = "dotfiles/home-manager";'
@@ -136,7 +136,7 @@ let
 
               dotfiles = {
                 url = "$DOTFILES_URL";
-                $DOTFILES_NIXPKGS_FOLLOWS_BLOCK
+                $DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK
               };
             };
 
