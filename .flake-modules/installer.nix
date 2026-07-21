@@ -89,15 +89,15 @@ let
           NIXPKGS_INPUT_BLOCK='nixpkgs.follows = "dotfiles/nixpkgs";'
           DOTFILES_NIXPKGS_FOLLOWS_BLOCK=""
           if [ -n "$DOTFILES_NIXPKGS_URL" ]; then
-            NIXPKGS_INPUT_BLOCK="nixpkgs.url = \"$DOTFILES_NIXPKGS_URL\";"
+            NIXPKGS_INPUT_BLOCK=$(printf 'nixpkgs.url = "%s";' "$DOTFILES_NIXPKGS_URL")
             DOTFILES_NIXPKGS_FOLLOWS_BLOCK='inputs.nixpkgs.follows = "nixpkgs";'
           fi
 
           HOME_MANAGER_INPUT_BLOCK='home-manager.follows = "dotfiles/home-manager";'
           if [ -n "$DOTFILES_HOME_MANAGER_URL" ]; then
-            HOME_MANAGER_INPUT_BLOCK=$(printf '%s\n' \
+            HOME_MANAGER_INPUT_BLOCK=$(printf '%s\n  url = "%s";\n%s\n%s' \
               'home-manager = {' \
-              "  url = \"$DOTFILES_HOME_MANAGER_URL\";" \
+              "$DOTFILES_HOME_MANAGER_URL" \
               '  inputs.nixpkgs.follows = "nixpkgs";' \
               '};')
           fi
