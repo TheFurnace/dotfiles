@@ -95,13 +95,11 @@ let
 
           HOME_MANAGER_INPUT_BLOCK='home-manager.follows = "dotfiles/home-manager";'
           if [ -n "$DOTFILES_HOME_MANAGER_URL" ]; then
-            HOME_MANAGER_INPUT_BLOCK=$(cat <<EOF
-          home-manager = {
-            url = "$DOTFILES_HOME_MANAGER_URL";
-            inputs.nixpkgs.follows = "nixpkgs";
-          };
-EOF
-            )
+            HOME_MANAGER_INPUT_BLOCK=$(printf '%s\n' \
+              'home-manager = {' \
+              "  url = \"$DOTFILES_HOME_MANAGER_URL\";" \
+              '  inputs.nixpkgs.follows = "nixpkgs";' \
+              '};')
           fi
 
           # ── detect non-NixOS Linux ───────────────────────────────────────────
