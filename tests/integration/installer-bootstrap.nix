@@ -20,6 +20,7 @@
 let
   helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs; };
   inherit (helpers) makeTest baseModule aliceModule system;
+  installerProgram = self.apps.${system}.default.program;
 
   # Pre-build the Home Manager activation package that the installer will
   # construct inside the VM. Seeding its closure into the VM avoids the
@@ -41,7 +42,10 @@ makeTest {
 
     # Append the pre-built alice activation package so the bulk of the
     # closure is already in the VM store before activation runs.
-    system.extraDependencies = [ aliceHomeConfig.activationPackage ];
+    system.extraDependencies = [
+      aliceHomeConfig.activationPackage
+      installerProgram
+    ];
   };
 
   testScript = ''
