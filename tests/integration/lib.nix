@@ -75,6 +75,9 @@ let
 
       settings = {
         experimental-features = [ "nix-command" "flakes" ];
+        # Avoid fetching the global flake registry from channels.nixos.org.
+        # VM tests provide local registry entries explicitly.
+        flake-registry = "";
       };
     };
 
