@@ -163,14 +163,14 @@ makeTest {
     with subtest("standalone Linux shell setup appends shells entry and calls chsh"):
         machine.succeed(
             alice_cmd(
-                "mkdir -p /home/alice/.local/bin "
-                "&& cat > /home/alice/.local/bin/test-chsh <<'EOF'\n"
+                "mkdir -p /home/alice/.local/bin /home/alice/.local/state\n"
+                "cat > /home/alice/.local/bin/test-chsh <<'EOF'\n"
                 "#!/bin/sh\n"
                 "printf '%s\\n' \"$*\" > /home/alice/.local/state/test-chsh.log\n"
                 "exit 0\n"
                 "EOF\n"
-                "&& chmod +x /home/alice/.local/bin/test-chsh "
-                "&& printf '/bin/sh\\n' > /home/alice/.local/state/test-shells"
+                "chmod +x /home/alice/.local/bin/test-chsh\n"
+                "printf '/bin/sh\\n' > /home/alice/.local/state/test-shells"
             )
         )
         succeed_as_alice(
