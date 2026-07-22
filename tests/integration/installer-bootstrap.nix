@@ -70,7 +70,9 @@ makeTest {
         "DOTFILES_HOME_MANAGER_URL=path:${home-manager} "
         "DOTFILES_USER=alice "
         "DOTFILES_HOME=/home/alice "
-        "DOTFILES_STATE_VERSION=25.11"
+        "DOTFILES_STATE_VERSION=25.11 "
+        "NIX_USER_CONF_FILES=/dev/null "
+        "NIX_CONFIG="
     )
 
     with subtest("plain init writes the flake without activating"):
@@ -82,6 +84,32 @@ makeTest {
         )
         machine.fail(
             "test -L /home/alice/.local/state/home-manager/gcroots/current-home"
+        )
+
+    with subtest("installer creates user nix.conf with flake support"):
+        machine.succeed("test -f /home/alice/.config/nix/nix.conf")
+        machine.succeed(
+            "grep -Fx 'experimental-features = nix-command flakes' "
+            "/home/alice/.config/nix/nix.conf"
+        )
+
+    with subtest("installer preserves user nix.conf and stays idempotent"):
+        machine.succeed(
+            "printf 'substituters = https://cache.nixos.org\\n"
+            "experimental-features = nix-command\\n' "
+            "> /home/alice/.config/nix/nix.conf"
+        )
+        succeed_as_alice(f"{installer_env} nix run dotfiles -- init")
+        machine.succeed(
+            "grep -Fx 'substituters = https://cache.nixos.org' "
+            "/home/alice/.config/nix/nix.conf"
+        )
+        machine.succeed(
+            "grep -Fx 'experimental-features = nix-command flakes' "
+            "/home/alice/.config/nix/nix.conf"
+        )
+        machine.succeed(
+            "[ \"$(grep -c '^experimental-features = ' /home/alice/.config/nix/nix.conf)\" = 1 ]"
         )
 
     with subtest("nix run installer completes successfully"):
@@ -130,6 +158,39 @@ makeTest {
         assert first_gen == second_gen, (
             "current-home gcroot changed across idempotent runs: "
             f"{first_gen!r} -> {second_gen!r}"
+        )
+
+    with subtest("standalone Linux shell setup appends shells entry and calls chsh"):
+        machine.succeed(
+            alice_cmd(
+                "mkdir -p /home/alice/.local/bin "
+                "&& cat > /home/alice/.local/bin/test-chsh <<'EOF'\n"
+                "#!/bin/sh\n"
+                "printf '%s\\n' \"$*\" > /home/alice/.local/state/test-chsh.log\n"
+                "exit 0\n"
+                "EOF\n"
+                "&& chmod +x /home/alice/.local/bin/test-chsh "
+                "&& printf '/bin/sh\\n' > /home/alice/.local/state/test-shells"
+            )
+        )
+        succeed_as_alice(
+            f"{installer_env} "
+            "DOTFILES_FORCE_LOGIN_SHELL_SETUP=1 "
+            "DOTFILES_CHSH=/home/alice/.local/bin/test-chsh "
+            "DOTFILES_SHELLS_FILE=/home/alice/.local/state/test-shells "
+            "nix run dotfiles -- init --switch"
+        )
+        machine.succeed(
+            "grep -Fx '/home/alice/.nix-profile/bin/fish' "
+            "/home/alice/.local/state/test-shells"
+        )
+        machine.succeed(
+            "grep -Fx -- '-s /home/alice/.nix-profile/bin/fish alice' "
+            "/home/alice/.local/state/test-chsh.log"
+        )
+        machine.succeed(
+            "[ \"$(grep -c '^/home/alice/.nix-profile/bin/fish$' "
+            "/home/alice/.local/state/test-shells)\" = 1 ]"
         )
   '';
 }
