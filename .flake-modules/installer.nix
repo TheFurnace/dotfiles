@@ -292,7 +292,12 @@ $NIX_CONFIG"
           # targets.genericLinux.enable is only meaningful on Linux, not Darwin.
           EXTRA_MODULES_BLOCK=""
           if [ "$(uname -s)" = "Linux" ] && [ ! -e /etc/NIXOS ]; then
-            EXTRA_MODULES_BLOCK=$(printf '        extraModules = [\n          { targets.genericLinux.enable = true; }\n        ];')
+            EXTRA_MODULES_BLOCK="$(
+              printf '%s\n' \
+                'extraModules = [' \
+                '  { targets.genericLinux.enable = true; }' \
+                '];'
+            )"
           fi
 
           echo "Installing dotfiles for user: $DOTFILES_USER"
@@ -310,32 +315,36 @@ $NIX_CONFIG"
             echo "flake.nix already exists at $FLAKE_PATH — skipping write."
             echo "Delete it first if you want to regenerate."
           else
-            cat > "$FLAKE_PATH" <<FLAKE
-          {
-            description = "Home Manager configuration for $DOTFILES_USER";
-
-            inputs = {
-              $NIXPKGS_INPUT_BLOCK
-
-              $HOME_MANAGER_INPUT_BLOCK
-
-              dotfiles = {
-                url = "$DOTFILES_URL";
-                $DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK
-              };
-            };
-
-            outputs = { dotfiles, ... }: {
-              homeConfigurations."$DOTFILES_USER" =
-                dotfiles.lib.mkHomeConfiguration {
-                  username      = "$DOTFILES_USER";
-                  homeDirectory = "$DOTFILES_HOME";
-                  stateVersion  = "$DOTFILES_STATE_VERSION";
-          $EXTRA_MODULES_BLOCK
-                };
-            };
-          }
-          FLAKE
+            {
+              printf '%s\n' '{'
+              printf '%s\n' "  description = \"Home Manager configuration for $DOTFILES_USER\";"
+              printf '\n'
+              printf '%s\n' '  inputs = {'
+              printf '    %s\n' "$NIXPKGS_INPUT_BLOCK"
+              printf '\n'
+              printf '%s\n' "$HOME_MANAGER_INPUT_BLOCK" | sed 's/^/    /'
+              printf '\n'
+              printf '%s\n' '    dotfiles = {'
+              printf '%s\n' "      url = \"$DOTFILES_URL\";"
+              if [ -n "$DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK" ]; then
+                printf '      %s\n' "$DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK"
+              fi
+              printf '%s\n' '    };'
+              printf '%s\n' '  };'
+              printf '\n'
+              printf '%s\n' '  outputs = { dotfiles, ... }: {'
+              printf '%s\n' "    homeConfigurations.\"$DOTFILES_USER\" ="
+              printf '%s\n' '      dotfiles.lib.mkHomeConfiguration {'
+              printf '%s\n' "        username      = \"$DOTFILES_USER\";"
+              printf '%s\n' "        homeDirectory = \"$DOTFILES_HOME\";"
+              printf '%s\n' "        stateVersion  = \"$DOTFILES_STATE_VERSION\";"
+              if [ -n "$EXTRA_MODULES_BLOCK" ]; then
+                printf '%s\n' "$EXTRA_MODULES_BLOCK" | sed 's/^/        /'
+              fi
+              printf '%s\n' '      };'
+              printf '%s\n' '  };'
+              printf '%s\n' '}'
+            } > "$FLAKE_PATH"
 
             echo "Wrote $FLAKE_PATH"
           fi
