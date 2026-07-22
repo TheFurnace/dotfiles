@@ -277,6 +277,7 @@ $NIX_CONFIG"
           fi
 
           HOME_MANAGER_INPUT_BLOCK='home-manager.follows = "dotfiles/home-manager";'
+          DOTFILES_INPUT_HOME_MANAGER_FOLLOWS_BLOCK=""
           if [ -n "$DOTFILES_HOME_MANAGER_URL" ]; then
             HOME_MANAGER_INPUT_BLOCK="$(
               printf '%s\n' \
@@ -285,6 +286,7 @@ $NIX_CONFIG"
                 '  inputs.nixpkgs.follows = "nixpkgs";' \
                 '};'
             )"
+            DOTFILES_INPUT_HOME_MANAGER_FOLLOWS_BLOCK='inputs.home-manager.follows = "home-manager";'
           fi
 
           # ── detect non-NixOS Linux ───────────────────────────────────────────
@@ -328,6 +330,9 @@ $NIX_CONFIG"
               printf '%s\n' "      url = \"$DOTFILES_URL\";"
               if [ -n "$DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK" ]; then
                 printf '      %s\n' "$DOTFILES_INPUT_NIXPKGS_FOLLOWS_BLOCK"
+              fi
+              if [ -n "$DOTFILES_INPUT_HOME_MANAGER_FOLLOWS_BLOCK" ]; then
+                printf '      %s\n' "$DOTFILES_INPUT_HOME_MANAGER_FOLLOWS_BLOCK"
               fi
               printf '%s\n' '    };'
               printf '%s\n' '  };'
