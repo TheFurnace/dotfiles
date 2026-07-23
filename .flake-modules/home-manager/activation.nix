@@ -21,7 +21,8 @@ in
         && [ "$current_shell" != "${pkgs.fish}/bin/fish" ] \
         && [ "$current_shell" != "/run/current-system/sw/bin/fish" ]; then
         echo "dotfiles: fish is installed and configured, but your login shell is still $current_shell"
-        echo "dotfiles: if your platform blocks automatic shell changes, run once: chsh -s \"$fish_shell\""
+        echo "dotfiles: if your platform blocks automatic shell changes, run once:"
+        echo "dotfiles:   sudo nix run github:TheFurnace/dotfiles -- setup-shell fish"
       fi
     '';
   };

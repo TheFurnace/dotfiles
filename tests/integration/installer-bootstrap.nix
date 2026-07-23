@@ -160,7 +160,28 @@ makeTest {
             f"{first_gen!r} -> {second_gen!r}"
         )
 
-    with subtest("standalone Linux shell setup appends shells entry and calls chsh"):
+    with subtest("standalone Linux init --switch prints setup-shell hint when login shell isn't fish"):
+        result = succeed_as_alice(
+            f"{installer_env} "
+            "DOTFILES_FORCE_LOGIN_SHELL_SETUP=1 "
+            "nix run dotfiles -- init --switch"
+        )
+        assert "setup-shell fish" in result, (
+            "expected init --switch to hint at 'setup-shell fish' when the "
+            f"login shell isn't fish yet, got:\n{result}"
+        )
+
+    with subtest("setup-shell requires root"):
+        result = machine.fail(alice_cmd(f"{installer_env} nix run dotfiles -- setup-shell fish"))
+        assert "must be run with sudo" in result, (
+            f"expected setup-shell to refuse to run as a normal user, got:\n{result}"
+        )
+        assert "sudo nix run" in result and "setup-shell fish" in result, (
+            "expected the refusal message to suggest the exact sudo command, "
+            f"got:\n{result}"
+        )
+
+    with subtest("setup-shell (run as root) appends shells entries and calls chsh"):
         machine.succeed(
             alice_cmd(
                 "mkdir -p /home/alice/.local/bin /home/alice/.local/state\n"
@@ -173,12 +194,12 @@ makeTest {
                 "printf '/bin/sh\\n' > /home/alice/.local/state/test-shells"
             )
         )
-        succeed_as_alice(
-            f"{installer_env} "
-            "DOTFILES_FORCE_LOGIN_SHELL_SETUP=1 "
+        machine.succeed(
+            "DOTFILES_USER=alice "
+            "DOTFILES_HOME=/home/alice "
             "DOTFILES_CHSH=/home/alice/.local/bin/test-chsh "
             "DOTFILES_SHELLS_FILE=/home/alice/.local/state/test-shells "
-            "nix run dotfiles -- init --switch"
+            "nix run dotfiles -- setup-shell fish"
         )
         machine.succeed(
             "grep -Fx '/home/alice/.nix-profile/bin/fish' "
@@ -191,6 +212,12 @@ makeTest {
         machine.succeed(
             "[ \"$(grep -c '^/home/alice/.nix-profile/bin/fish$' "
             "/home/alice/.local/state/test-shells)\" = 1 ]"
+        )
+
+    with subtest("setup-shell rejects unsupported shell names"):
+        machine.fail(
+            "DOTFILES_USER=alice DOTFILES_HOME=/home/alice "
+            "nix run dotfiles -- setup-shell zsh"
         )
   '';
 }
