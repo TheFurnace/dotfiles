@@ -7,9 +7,18 @@
 #   nix run github:TheFurnace/dotfiles -- init --switch
 #     Write the flake and immediately run `home-manager switch` to activate.
 #
+#   sudo nix run github:TheFurnace/dotfiles -- setup-shell <fish|bash|pwsh>
+#     Add fish/bash/pwsh from the target user's nix profile to /etc/shells
+#     and chsh the target user to <shell>. Standalone (non-NixOS) Linux
+#     requires root for both of those, so this is a separate, sudo-only
+#     subcommand; `init --switch` prints this command as a final hint when
+#     the user's login shell isn't fish yet.
+#
 # Environment overrides (all optional):
-#   DOTFILES_USER              — username  (default: $USER or `id -un`)
-#   DOTFILES_HOME              — home dir  (default: $HOME)
+#   DOTFILES_USER              — username  (default: $USER or `id -un`;
+#                                for setup-shell: $SUDO_USER)
+#   DOTFILES_HOME              — home dir  (default: $HOME;
+#                                for setup-shell: looked up via getent)
 #   DOTFILES_STATE_VERSION     — Home Manager state version (default: 25.11)
 #   DOTFILES_URL               — flake URL for the dotfiles input
 #                                (default: github:TheFurnace/dotfiles)
@@ -51,9 +60,15 @@ let
             echo "                  and ensure \$XDG_CONFIG_HOME/nix/nix.conf enables"
             echo "                  experimental-features = nix-command flakes"
             echo "  init --switch   Write the flake, ensure user-level flake support for"
-            echo "                  child commands, activate with home-manager switch,"
-            echo "                  and on standalone Linux try to set fish as the"
-            echo "                  login shell when the platform allows it"
+            echo "                  child commands, and activate with home-manager switch"
+            echo ""
+            echo "  setup-shell <fish|bash|pwsh>"
+            echo "                  Must be run with sudo. Adds the fish/bash/pwsh"
+            echo "                  binaries from the target user's nix profile to"
+            echo "                  /etc/shells, then runs chsh to make <shell> the"
+            echo "                  target user's login shell. Intended for standalone"
+            echo "                  (non-NixOS) Linux, where only root can edit"
+            echo "                  /etc/shells and change another user's login shell."
             echo ""
             echo "Note: the initial 'nix run ...' command must already be able to"
             echo "parse flakes before this installer starts."
@@ -151,39 +166,111 @@ $NIX_CONFIG"
             fi
           }
 
-          ensure_shell_is_accepted() {
-            local fish_shell="$1"
+          add_shell_to_list() {
+            local shell_path="$1"
             local shells_file="$2"
             local last_char
 
-            if [ ! -e "$shells_file" ]; then
-              echo "dotfiles: fish is installed at $fish_shell, but $shells_file does not exist."
-              echo "dotfiles: add this path with appropriate privileges, then run:"
-              echo "  chsh -s \"$fish_shell\""
-              return 1
-            fi
-
-            if grep -Fqx "$fish_shell" "$shells_file"; then
+            if grep -Fqx "$shell_path" "$shells_file" 2>/dev/null; then
               return 0
-            fi
-
-            if [ ! -w "$shells_file" ]; then
-              echo "dotfiles: fish is installed at $fish_shell, but $shells_file does not list it."
-              echo "dotfiles: add this line with appropriate privileges, then run:"
-              echo "  chsh -s \"$fish_shell\""
-              return 1
             fi
 
             last_char="$(tail -c 1 "$shells_file" 2>/dev/null || true)"
             if [ -n "$last_char" ]; then
               printf '\n' >> "$shells_file"
             fi
-            printf '%s\n' "$fish_shell" >> "$shells_file"
-            echo "dotfiles: added $fish_shell to $shells_file"
+            printf '%s\n' "$shell_path" >> "$shells_file"
+            echo "dotfiles: added $shell_path to $shells_file"
           }
 
-          maybe_configure_login_shell() {
-            local current_shell fish_shell shells_file chsh_bin
+          # ── setup-shell (run with sudo) ──────────────────────────────────────
+          # Adds fish/bash/pwsh from the target user's nix profile to
+          # /etc/shells, then chsh's the target user to the requested shell.
+          # Standalone (non-NixOS) Linux does not let an unprivileged user edit
+          # /etc/shells or change another account's login shell, so this is
+          # split out from `init` and must be run with sudo.
+          setup_shell() {
+            local requested_shell="$1"
+            local shells_file target_user target_home shell_name shell_path chsh_bin
+
+            case "$requested_shell" in
+              fish | bash | pwsh) ;;
+              "")
+                echo "dotfiles: setup-shell requires a shell name: fish, bash, or pwsh."
+                usage
+                exit 1
+                ;;
+              *)
+                echo "dotfiles: unsupported shell '$requested_shell'. Supported: fish, bash, pwsh."
+                exit 1
+                ;;
+            esac
+
+            if [ "$(id -u)" -ne 0 ]; then
+              echo "dotfiles: setup-shell must be run with sudo (it edits /etc/shells and"
+              echo "dotfiles: changes another account's login shell). Try:"
+              echo "  sudo nix run $DOTFILES_URL -- setup-shell $requested_shell"
+              exit 1
+            fi
+
+            target_user="''${DOTFILES_USER:-''${SUDO_USER:-}}"
+            if [ -z "$target_user" ]; then
+              echo "dotfiles: could not determine the target user. Set DOTFILES_USER, e.g.:"
+              echo "  sudo DOTFILES_USER=<user> nix run $DOTFILES_URL -- setup-shell $requested_shell"
+              exit 1
+            fi
+
+            target_home="''${DOTFILES_HOME:-}"
+            if [ -z "$target_home" ]; then
+              target_home="$(
+                (command -v getent >/dev/null 2>&1 && getent passwd "$target_user" | cut -d: -f6) || true
+              )"
+            fi
+            if [ -z "$target_home" ]; then
+              echo "dotfiles: could not determine the home directory for $target_user."
+              echo "dotfiles: set DOTFILES_HOME explicitly and try again."
+              exit 1
+            fi
+
+            shells_file="''${DOTFILES_SHELLS_FILE:-/etc/shells}"
+            [ -e "$shells_file" ] || : > "$shells_file"
+
+            shell_path=""
+            for shell_name in fish bash pwsh; do
+              local candidate="$target_home/.nix-profile/bin/$shell_name"
+              if [ -x "$candidate" ]; then
+                add_shell_to_list "$candidate" "$shells_file"
+                if [ "$shell_name" = "$requested_shell" ]; then
+                  shell_path="$candidate"
+                fi
+              fi
+            done
+
+            if [ -z "$shell_path" ]; then
+              echo "dotfiles: $requested_shell was not found in $target_user's nix profile"
+              echo "dotfiles: ($target_home/.nix-profile/bin/$requested_shell)."
+              echo "dotfiles: run 'nix run $DOTFILES_URL -- init --switch' as $target_user first."
+              exit 1
+            fi
+
+            chsh_bin="''${DOTFILES_CHSH:-$(command -v chsh 2>/dev/null || true)}"
+            if [ -z "$chsh_bin" ]; then
+              echo "dotfiles: added shells to $shells_file, but 'chsh' is not available."
+              echo "dotfiles: use your distro's preferred shell-change command to set:"
+              echo "  $shell_path"
+              exit 1
+            fi
+
+            if "$chsh_bin" -s "$shell_path" "$target_user"; then
+              echo "dotfiles: login shell for $target_user set to $shell_path"
+            else
+              echo "dotfiles: failed to set $target_user's login shell to $shell_path."
+              exit 1
+            fi
+          }
+
+          report_login_shell_status() {
+            local current_shell fish_shell
 
             if [ "$(uname -s)" != "Linux" ]; then
               return 0
@@ -210,34 +297,31 @@ $NIX_CONFIG"
               return 0
             fi
 
-            shells_file="''${DOTFILES_SHELLS_FILE:-/etc/shells}"
-            if ! ensure_shell_is_accepted "$fish_shell" "$shells_file"; then
-              return 0
-            fi
-
-            chsh_bin="''${DOTFILES_CHSH:-$(command -v chsh 2>/dev/null || true)}"
-            if [ -z "$chsh_bin" ]; then
-              echo "dotfiles: fish is installed at $fish_shell, but 'chsh' is not available."
-              echo "dotfiles: run once with your distro's preferred shell-change command."
-              return 0
-            fi
-
-            if "$chsh_bin" -s "$fish_shell" "$DOTFILES_USER" </dev/null 2>/dev/null \
-              || "$chsh_bin" -s "$fish_shell" </dev/null; then
-              echo "dotfiles: login shell set to $fish_shell"
-            else
-              echo "dotfiles: fish is installed at $fish_shell, but automatic login-shell setup could not complete."
-              echo "dotfiles: run once yourself (it may prompt for your account password):"
-              echo "  chsh -s \"$fish_shell\""
-            fi
+            echo ""
+            echo "dotfiles: your login shell is not yet fish."
+            echo "dotfiles: standalone (non-NixOS) Linux requires root to add nix-managed"
+            echo "dotfiles: shells to /etc/shells and change another account's login shell."
+            echo "dotfiles: to finish setup, run:"
+            echo "  sudo nix run $DOTFILES_URL -- setup-shell fish"
+            echo "dotfiles: (fish, bash, and pwsh are all supported; swap 'fish' above"
+            echo "dotfiles: for the shell you want as your login shell)."
           }
 
           # ── parse subcommand ─────────────────────────────────────────────────
           SUBCOMMAND="''${1:-}"
           shift || true
 
+          # DOTFILES_URL is used by both subcommands (init writes it into the
+          # generated flake; setup-shell echoes it back in its own usage/error
+          # messages), so resolve it up front.
+          DOTFILES_URL="''${DOTFILES_URL:-github:TheFurnace/dotfiles}"
+
           case "$SUBCOMMAND" in
             init) ;;
+            setup-shell)
+              setup_shell "''${1:-}"
+              exit 0
+              ;;
             *)
               usage
               exit 1
@@ -261,7 +345,6 @@ $NIX_CONFIG"
           DOTFILES_USER="''${DOTFILES_USER:-''${USER:-$(id -un)}}"
           DOTFILES_HOME="''${DOTFILES_HOME:-$HOME}"
           DOTFILES_STATE_VERSION="''${DOTFILES_STATE_VERSION:-25.11}"
-          DOTFILES_URL="''${DOTFILES_URL:-github:TheFurnace/dotfiles}"
           DOTFILES_NIXPKGS_URL="''${DOTFILES_NIXPKGS_URL:-}"
           DOTFILES_HOME_MANAGER_URL="''${DOTFILES_HOME_MANAGER_URL:-}"
 
@@ -357,7 +440,7 @@ $NIX_CONFIG"
           # ── activate (only with --switch) ────────────────────────────────────
           if $DO_SWITCH; then
             home-manager switch -b backup --flake "$HM_CONFIG_DIR#$DOTFILES_USER"
-            maybe_configure_login_shell
+            report_login_shell_status
           fi
         '';
       };
