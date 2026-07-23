@@ -191,9 +191,10 @@ $NIX_CONFIG"
           # split out from `init` and must be run with sudo.
           setup_shell() {
             local requested_shell="$1"
-            local shells_file target_user target_home shell_name shell_path chsh_bin
+            local shells_file target_user target_home shell_name shell_path chsh_bin candidate
 
             case "$requested_shell" in
+              # Supported shells — fall through to the checks below.
               fish | bash | pwsh) ;;
               "")
                 echo "dotfiles: setup-shell requires a shell name: fish, bash, or pwsh."
@@ -221,10 +222,10 @@ $NIX_CONFIG"
             fi
 
             target_home="''${DOTFILES_HOME:-}"
-            if [ -z "$target_home" ]; then
-              target_home="$(
-                (command -v getent >/dev/null 2>&1 && getent passwd "$target_user" | cut -d: -f6) || true
-              )"
+            if [ -z "$target_home" ] && command -v getent >/dev/null 2>&1; then
+              # getent may legitimately find no entry (or not exist at all on
+              # some minimal systems); fall back to requiring DOTFILES_HOME.
+              target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
             fi
             if [ -z "$target_home" ]; then
               echo "dotfiles: could not determine the home directory for $target_user."
@@ -233,11 +234,11 @@ $NIX_CONFIG"
             fi
 
             shells_file="''${DOTFILES_SHELLS_FILE:-/etc/shells}"
-            [ -e "$shells_file" ] || : > "$shells_file"
+            [ -e "$shells_file" ] || touch "$shells_file"
 
             shell_path=""
             for shell_name in fish bash pwsh; do
-              local candidate="$target_home/.nix-profile/bin/$shell_name"
+              candidate="$target_home/.nix-profile/bin/$shell_name"
               if [ -x "$candidate" ]; then
                 add_shell_to_list "$candidate" "$shells_file"
                 if [ "$shell_name" = "$requested_shell" ]; then
