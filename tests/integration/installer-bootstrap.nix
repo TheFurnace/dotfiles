@@ -176,6 +176,10 @@ makeTest {
         assert "must be run with sudo" in result, (
             f"expected setup-shell to refuse to run as a normal user, got:\n{result}"
         )
+        assert "sudo nix run" in result and "setup-shell fish" in result, (
+            "expected the refusal message to suggest the exact sudo command, "
+            f"got:\n{result}"
+        )
 
     with subtest("setup-shell (run as root) appends shells entries and calls chsh"):
         machine.succeed(

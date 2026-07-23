@@ -223,9 +223,10 @@ $NIX_CONFIG"
 
             target_home="''${DOTFILES_HOME:-}"
             if [ -z "$target_home" ] && command -v getent >/dev/null 2>&1; then
-              # getent may legitimately find no entry (or not exist at all on
-              # some minimal systems); fall back to requiring DOTFILES_HOME.
-              target_home="$(getent passwd "$target_user" | cut -d: -f6 || true)"
+              target_home="$(getent passwd "$target_user" | cut -d: -f6)" || true
+              if [ -z "$target_home" ]; then
+                echo "dotfiles: getent found no passwd entry for $target_user."
+              fi
             fi
             if [ -z "$target_home" ]; then
               echo "dotfiles: could not determine the home directory for $target_user."
@@ -236,6 +237,10 @@ $NIX_CONFIG"
             shells_file="''${DOTFILES_SHELLS_FILE:-/etc/shells}"
             [ -e "$shells_file" ] || touch "$shells_file"
 
+            # Register every nix-managed shell that's actually installed for
+            # this user (not just the requested one), matching the promised
+            # behavior of adding fish/bash/pwsh nix paths to /etc/shells in a
+            # single setup-shell run.
             shell_path=""
             for shell_name in fish bash pwsh; do
               candidate="$target_home/.nix-profile/bin/$shell_name"
