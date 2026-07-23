@@ -17,6 +17,7 @@ in
       powershell
       gh
       tree-sitter
+      roslyn-ls
     ];
   };
 }
