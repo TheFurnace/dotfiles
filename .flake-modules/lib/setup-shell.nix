@@ -79,6 +79,11 @@
       exit 1
     fi
 
+    # defaultUserExpr/defaultHomeExpr below are Nix parameters substituted at
+    # evaluation time into this bash source, not shell variables expanded at
+    # runtime — the extra quote before the dollar sign below escapes the bash
+    # parameter-expansion syntax from Nix's own string interpolation so it
+    # survives into the generated script.
     target_user="''${DOTFILES_USER:-${defaultUserExpr}}"
     if [ -z "$target_user" ]; then
       echo "dotfiles: could not determine the target user. Set DOTFILES_USER, e.g.:"
