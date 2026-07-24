@@ -42,6 +42,16 @@ The module installs or enables everything needed for the environment in this rep
 - `nix-index-database` + `comma`
 - `nix-your-shell`
 - `fira-code` plus user fontconfig so the kitty font setting works
+- `tmux`
+- [Pi](https://pi.dev), bootstrapped by its official installer outside the Nix store
+
+Pi intentionally uses a hybrid installation: Home Manager installs `tmux`, while
+its activation script runs `curl -fsSL https://pi.dev/install.sh | sh` only when
+neither `~/.local/bin/pi` (the installer location) nor `pi` on `PATH` exists.
+This lets Pi retain ownership of its bundled runtime
+and self-updates without making every rebuild reinstall it. The first activation
+therefore requires network access; subsequent activations only report that Pi is
+already installed.
 
 Git aliases and editor settings are included, but `git user.name` and `git user.email` are intentionally left unset so the flake stays generic.
 
@@ -421,6 +431,23 @@ nix build .#checks.x86_64-linux.installer-bootstrap
 ```bash
 nix flake check
 ```
+
+### Integration-test networking
+
+NixOS integration-test VMs use the NixOS test framework's isolated VDE network.
+They do **not** have general outbound DNS or Internet access, even when the host
+can resolve and reach `cache.nixos.org`. Consequently, integration tests must
+be self-contained: pre-build and add every required store closure to the VM
+(for example through `system.extraDependencies`) rather than expecting the VM
+to fetch missing paths from `cache.nixos.org` or source archives from upstream
+mirrors.
+
+If a VM check reports `Could not resolve host: cache.nixos.org`,
+`www.python.org`, or another external host, it means the test attempted to use
+a dependency that was not seeded into the VM. It is not, by itself, evidence of
+a host DNS issue or a `cache.nixos.org` outage. Run the nmt unit tests first;
+then identify and seed the missing closure before treating the VM test as
+validated.
 
 ## Development shell
 

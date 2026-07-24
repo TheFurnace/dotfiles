@@ -124,31 +124,30 @@ Add a new **integration test** (`tests/integration/`) whenever you:
 
 ### `nix flake check` failures in cloud/CI environments
 
-`nix flake check` runs the NixOS VM integration tests, which boot a real VM and download
-external dependencies. In cloud agent environments these can fail for reasons unrelated to
-your code changes.
+`nix flake check` runs the NixOS VM integration tests. These VMs run on the
+NixOS test framework's isolated VDE network, not the host's normal network, so
+an integration test must not depend on outbound DNS or Internet access. A host
+may successfully reach `cache.nixos.org` while the test VM cannot resolve it.
+
+**Keep VM tests hermetic.** Pre-build and add every store closure the in-VM
+command can need to `system.extraDependencies`; do not rely on a VM download
+from `cache.nixos.org`, GNU mirrors, `www.python.org`, or other upstream hosts.
+A `Could not resolve host` error from a VM means a needed dependency was not
+seeded into the VM, not necessarily that the host network or cache is down.
 
 **Run targeted, offline-capable validation first.** Before running `nix flake check`, always
 run `python3 tests/tests.py` (nmt unit tests — no network, no VM). If those pass, proceed
 to `nix flake check` and inspect any failure carefully.
 
-**When a `nix flake check` failure is infrastructure/external only:** Treat it as such
-*only* when the logs specifically show one or more of these indicators:
-- TLS certificate-chain errors (e.g. "self-signed certificate in certificate chain") when
-  fetching from `cache.nixos.org` or other substituters
-- Substituter or binary cache access failures (403, connection refused, DNS failure)
-- Repeated download timeouts from external hosts (GNU mirrors, `www.python.org`, etc.)
-
-When you identify an infrastructure failure:
-1. Quote the **exact** error line(s) from the log.
-2. Name the **exact** external dependency or host that failed.
-3. State clearly which targeted tests passed and which check was blocked by the infra issue.
-4. Do **not** claim the code is definitively correct — a real code issue could coexist with a
-   transient network failure.
+When an integration test reports an external fetch attempt:
+1. Quote the **exact** error line(s) and identify the missing dependency or host.
+2. Check whether the host itself can resolve the host before calling it an external outage.
+3. Add the required closure to the VM's seeded dependencies, then re-run the check.
+4. Do **not** claim the code is definitively correct until the hermetic VM test passes.
 
 **Do not weaken TLS verification or change Nix security settings** (e.g. setting
 `nix.settings.accept-flake-config`, disabling certificate checks, or adding untrusted
-substituters) to work around infrastructure failures. These would introduce security
+substituters) to work around a missing VM closure. These would introduce security
 regressions.
 
 **If the logs do not show network/TLS/download indicators,** treat the failure as a real

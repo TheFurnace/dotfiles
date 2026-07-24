@@ -113,6 +113,15 @@ makeTest {
         )
 
     with subtest("nix run installer completes successfully"):
+        # The Pi bootstrap is separately unit-tested. Avoid downloading mutable
+        # upstream installer content in this offline/reproducible VM test by
+        # emulating the Pi executable at the official install location.
+        machine.succeed(
+            "mkdir -p /home/alice/.local/bin && "
+            "printf '#!/bin/sh\\nexit 0\\n' > /home/alice/.local/bin/pi && "
+            "chmod +x /home/alice/.local/bin/pi && "
+            "chown -R alice:users /home/alice/.local"
+        )
         # Flake already exists from plain init; init --switch should reuse it.
         succeed_as_alice(f"{installer_env} nix run dotfiles -- init --switch")
 

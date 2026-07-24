@@ -7,6 +7,7 @@
     ./xdg.nix
     (import ./packages.nix)
     (import ./programs.nix { inherit nix-index-database; })
+    ./pi.nix
     ./gh.nix
     ./fish
     (import ./config-files.nix { inherit self; })
