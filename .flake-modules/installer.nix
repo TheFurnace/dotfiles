@@ -47,6 +47,19 @@ let
       # generated configuration will use.
       hmPackage = home-manager.packages.${system}.home-manager;
 
+      # Shared with the `dotfiles-setup-shell` helper installed by the Home
+      # Manager module (.flake-modules/home-manager/setup-shell.nix); see
+      # .flake-modules/lib/setup-shell.nix for the common implementation.
+      # This compat path resolves the target user/home dynamically (via
+      # $SUDO_USER/getent) since it can be pointed at any account, not just
+      # the one that ran `nix run`.
+      setupShellScript = import ./lib/setup-shell.nix {
+        defaultUserExpr = "\${SUDO_USER:-}";
+        defaultHomeExpr = "";
+        sudoCommand = "sudo nix run \$DOTFILES_URL -- setup-shell";
+        initSwitchCommand = "nix run \$DOTFILES_URL -- init --switch";
+      };
+
       installer = pkgs.writeShellApplication {
         name = "install-dotfiles";
         runtimeInputs = [ pkgs.nix pkgs.git hmPackage ];
@@ -63,12 +76,16 @@ let
             echo "                  child commands, and activate with home-manager switch"
             echo ""
             echo "  setup-shell <fish|bash|pwsh>"
-            echo "                  Must be run with sudo. Adds the fish/bash/pwsh"
-            echo "                  binaries from the target user's nix profile to"
-            echo "                  /etc/shells, then runs chsh to make <shell> the"
-            echo "                  target user's login shell. Intended for standalone"
-            echo "                  (non-NixOS) Linux, where only root can edit"
-            echo "                  /etc/shells and change another user's login shell."
+            echo "                  Compatibility path. Must be run with sudo. Adds the"
+            echo "                  fish/bash/pwsh binaries from the target user's nix"
+            echo "                  profile to /etc/shells, then runs chsh to make"
+            echo "                  <shell> the target user's login shell. Intended for"
+            echo "                  standalone (non-NixOS) Linux, where only root can"
+            echo "                  edit /etc/shells and change another user's login"
+            echo "                  shell."
+            echo "                  Prefer 'sudo \$DOTFILES_HOME/.nix-profile/bin/dotfiles-setup-shell <shell>' once it"
+            echo "                  is installed by 'init --switch' — it already has"
+            echo "                  your username/home baked in."
             echo ""
             echo "Note: the initial 'nix run ...' command must already be able to"
             echo "parse flakes before this installer starts."
@@ -166,114 +183,16 @@ $NIX_CONFIG"
             fi
           }
 
-          add_shell_to_list() {
-            local shell_path="$1"
-            local shells_file="$2"
-            local last_char
-
-            if grep -Fqx "$shell_path" "$shells_file" 2>/dev/null; then
-              return 0
-            fi
-
-            last_char="$(tail -c 1 "$shells_file" 2>/dev/null || true)"
-            if [ -n "$last_char" ]; then
-              printf '\n' >> "$shells_file"
-            fi
-            printf '%s\n' "$shell_path" >> "$shells_file"
-            echo "dotfiles: added $shell_path to $shells_file"
-          }
-
           # ── setup-shell (run with sudo) ──────────────────────────────────────
-          # Adds fish/bash/pwsh from the target user's nix profile to
-          # /etc/shells, then chsh's the target user to the requested shell.
-          # Standalone (non-NixOS) Linux does not let an unprivileged user edit
-          # /etc/shells or change another account's login shell, so this is
-          # split out from `init` and must be run with sudo.
-          setup_shell() {
-            local requested_shell="$1"
-            local shells_file target_user target_home shell_name shell_path chsh_bin candidate
-
-            case "$requested_shell" in
-              # Supported shells — fall through to the checks below.
-              fish | bash | pwsh) ;;
-              "")
-                echo "dotfiles: setup-shell requires a shell name: fish, bash, or pwsh."
-                usage
-                exit 1
-                ;;
-              *)
-                echo "dotfiles: unsupported shell '$requested_shell'. Supported: fish, bash, pwsh."
-                exit 1
-                ;;
-            esac
-
-            if [ "$(id -u)" -ne 0 ]; then
-              echo "dotfiles: setup-shell must be run with sudo (it edits /etc/shells and"
-              echo "dotfiles: changes another account's login shell). Try:"
-              echo "  sudo nix run $DOTFILES_URL -- setup-shell $requested_shell"
-              exit 1
-            fi
-
-            target_user="''${DOTFILES_USER:-''${SUDO_USER:-}}"
-            if [ -z "$target_user" ]; then
-              echo "dotfiles: could not determine the target user. Set DOTFILES_USER, e.g.:"
-              echo "  sudo DOTFILES_USER=<user> nix run $DOTFILES_URL -- setup-shell $requested_shell"
-              exit 1
-            fi
-
-            target_home="''${DOTFILES_HOME:-}"
-            if [ -z "$target_home" ] && command -v getent >/dev/null 2>&1; then
-              target_home="$(getent passwd "$target_user" | cut -d: -f6)" || true
-              if [ -z "$target_home" ]; then
-                echo "dotfiles: getent found no passwd entry for $target_user."
-              fi
-            fi
-            if [ -z "$target_home" ]; then
-              echo "dotfiles: could not determine the home directory for $target_user."
-              echo "dotfiles: set DOTFILES_HOME explicitly and try again."
-              exit 1
-            fi
-
-            shells_file="''${DOTFILES_SHELLS_FILE:-/etc/shells}"
-            [ -e "$shells_file" ] || touch "$shells_file"
-
-            # Register every nix-managed shell that's actually installed for
-            # this user (not just the requested one), matching the promised
-            # behavior of adding fish/bash/pwsh nix paths to /etc/shells in a
-            # single setup-shell run.
-            shell_path=""
-            for shell_name in fish bash pwsh; do
-              candidate="$target_home/.nix-profile/bin/$shell_name"
-              if [ -x "$candidate" ]; then
-                add_shell_to_list "$candidate" "$shells_file"
-                if [ "$shell_name" = "$requested_shell" ]; then
-                  shell_path="$candidate"
-                fi
-              fi
-            done
-
-            if [ -z "$shell_path" ]; then
-              echo "dotfiles: $requested_shell was not found in $target_user's nix profile"
-              echo "dotfiles: ($target_home/.nix-profile/bin/$requested_shell)."
-              echo "dotfiles: run 'nix run $DOTFILES_URL -- init --switch' as $target_user first."
-              exit 1
-            fi
-
-            chsh_bin="''${DOTFILES_CHSH:-$(command -v chsh 2>/dev/null || true)}"
-            if [ -z "$chsh_bin" ]; then
-              echo "dotfiles: added shells to $shells_file, but 'chsh' is not available."
-              echo "dotfiles: use your distro's preferred shell-change command to set:"
-              echo "  $shell_path"
-              exit 1
-            fi
-
-            if "$chsh_bin" -s "$shell_path" "$target_user"; then
-              echo "dotfiles: login shell for $target_user set to $shell_path"
-            else
-              echo "dotfiles: failed to set $target_user's login shell to $shell_path."
-              exit 1
-            fi
-          }
+          # Compatibility path: adds fish/bash/pwsh from the target user's nix
+          # profile to /etc/shells, then chsh's the target user to the
+          # requested shell. Standalone (non-NixOS) Linux does not let an
+          # unprivileged user edit /etc/shells or change another account's
+          # login shell, so this is split out from `init` and must be run
+          # with sudo. Shared with the `dotfiles-setup-shell` helper that
+          # `init --switch` installs into the Home Manager profile; see
+          # .flake-modules/lib/setup-shell.nix.
+          ${setupShellScript}
 
           report_login_shell_status() {
             local current_shell fish_shell
@@ -308,9 +227,12 @@ $NIX_CONFIG"
             echo "dotfiles: standalone (non-NixOS) Linux requires root to add nix-managed"
             echo "dotfiles: shells to /etc/shells and change another account's login shell."
             echo "dotfiles: to finish setup, run:"
-            echo "  sudo nix run $DOTFILES_URL -- setup-shell fish"
+            echo "  sudo $DOTFILES_HOME/.nix-profile/bin/dotfiles-setup-shell fish"
             echo "dotfiles: (fish, bash, and pwsh are all supported; swap 'fish' above"
-            echo "dotfiles: for the shell you want as your login shell)."
+            echo "dotfiles: for the shell you want as your login shell). If"
+            echo "dotfiles: dotfiles-setup-shell isn't on your profile yet, use the"
+            echo "dotfiles: compatibility command instead:"
+            echo "  sudo nix run $DOTFILES_URL -- setup-shell fish"
           }
 
           # ── parse subcommand ─────────────────────────────────────────────────

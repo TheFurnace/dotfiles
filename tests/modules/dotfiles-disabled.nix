@@ -6,5 +6,6 @@
     assertPathNotExists home-files/.config/nvim
     assertPathNotExists home-files/.config/kitty
     assertPathNotExists home-files/.config/oh-my-posh
+    assertPathNotExists home-path/bin/dotfiles-setup-shell
   '';
 }

@@ -22,7 +22,7 @@ in
         && [ "$current_shell" != "/run/current-system/sw/bin/fish" ]; then
         echo "dotfiles: fish is installed and configured, but your login shell is still $current_shell"
         echo "dotfiles: if your platform blocks automatic shell changes, run once:"
-        echo "dotfiles:   sudo nix run github:TheFurnace/dotfiles -- setup-shell fish"
+        echo "dotfiles:   sudo ${config.home.homeDirectory}/.nix-profile/bin/dotfiles-setup-shell fish"
       fi
     '';
   };

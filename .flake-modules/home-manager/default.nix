@@ -11,6 +11,7 @@
     ./fish
     (import ./config-files.nix { inherit self; })
     (import ./data-files.nix { inherit self; })
+    ./setup-shell.nix
     ./activation.nix
   ];
 }
