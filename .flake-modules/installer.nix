@@ -83,7 +83,7 @@ let
             echo "                  standalone (non-NixOS) Linux, where only root can"
             echo "                  edit /etc/shells and change another user's login"
             echo "                  shell."
-            echo "                  Prefer 'sudo dotfiles-setup-shell <shell>' once it"
+            echo "                  Prefer 'sudo \$DOTFILES_HOME/.nix-profile/bin/dotfiles-setup-shell <shell>' once it"
             echo "                  is installed by 'init --switch' — it already has"
             echo "                  your username/home baked in."
             echo ""

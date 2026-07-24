@@ -13,7 +13,7 @@ let
     defaultUserExpr = cfg.username;
     defaultHomeExpr = cfg.homeDirectory;
     sudoCommand = "sudo dotfiles-setup-shell";
-    initSwitchCommand = "nix run github:TheFurnace/dotfiles -- init --switch";
+    initSwitchCommand = "nix run \${DOTFILES_URL:-github:TheFurnace/dotfiles} -- init --switch";
   };
 
   dotfilesSetupShell = pkgs.writeShellApplication {
