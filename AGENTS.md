@@ -122,6 +122,38 @@ Add a new **integration test** (`tests/integration/`) whenever you:
 - validate changes with `nix flake check`
 - commit changes
 
+### `nix flake check` failures in cloud/CI environments
+
+`nix flake check` runs the NixOS VM integration tests, which boot a real VM and download
+external dependencies. In cloud agent environments these can fail for reasons unrelated to
+your code changes.
+
+**Run targeted, offline-capable validation first.** Before running `nix flake check`, always
+run `python3 tests/tests.py` (nmt unit tests — no network, no VM). If those pass, proceed
+to `nix flake check` and inspect any failure carefully.
+
+**When a `nix flake check` failure is infrastructure/external only:** Treat it as such
+*only* when the logs specifically show one or more of these indicators:
+- TLS certificate-chain errors (e.g. "self-signed certificate in certificate chain") when
+  fetching from `cache.nixos.org` or other substituters
+- Substituter or binary cache access failures (403, connection refused, DNS failure)
+- Repeated download timeouts from external hosts (GNU mirrors, `www.python.org`, etc.)
+
+When you identify an infrastructure failure:
+1. Quote the **exact** error line(s) from the log.
+2. Name the **exact** external dependency or host that failed.
+3. State clearly which targeted tests passed and which check was blocked by the infra issue.
+4. Do **not** claim the code is definitively correct — a real code issue could coexist with a
+   transient network failure.
+
+**Do not weaken TLS verification or change Nix security settings** (e.g. setting
+`nix.settings.accept-flake-config`, disabling certificate checks, or adding untrusted
+substituters) to work around infrastructure failures. These would introduce security
+regressions.
+
+**If the logs do not show network/TLS/download indicators,** treat the failure as a real
+code or test issue and investigate it normally.
+
 ## Cautions
 
 - `flake.nix` walks `.config/` at evaluation time using `builtins.readDir`. New subdirectories are picked up automatically on the next rebuild; no manual wiring is needed.
