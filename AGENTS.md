@@ -62,26 +62,41 @@ exists is a no-op.
 
 ### Test kinds
 
-| Kind | Location | Framework | When it runs |
+| Kind | Location | Framework | Use it when |
 |---|---|---|---|
-| nmt unit tests | `tests/modules/` | [nmt](https://git.sr.ht/~rycee/nmt) | `python3 tests/tests.py` / `nix run .#packages.x86_64-linux.tests` / CI |
-| NixOS VM integration tests | `tests/integration/` | NixOS `makeTest` | `nix build .#checks.x86_64-linux.<name>` / `nix flake check` / CI |
+| nmt unit tests | `tests/modules/` | [nmt](https://git.sr.ht/~rycee/nmt) | **Default validation** for Home Manager modules, generated configuration, package declarations, and config-file linking. Fast; does not boot a VM. |
+| NixOS VM integration tests | `tests/integration/` | NixOS `makeTest` | The behavior can only be validated from a fresh NixOS VM, such as installer/init behavior or a new full end-to-end bootstrap flow. Slow; boots a VM. |
 
 ### How to run tests
 
 ```sh
-# Run all nmt unit tests (fast, no VM):
-python3 tests/tests.py
+# Run all nmt unit tests (the standard validation command; fast, no VM):
+nix run .#packages.x86_64-linux.tests
 
-# Run a subset by name substring:
-python3 tests/tests.py config
+# Run a subset by name substring while iterating:
+nix run .#packages.x86_64-linux.tests -- config
 
 # List available tests:
-python3 tests/tests.py -l
+nix run .#packages.x86_64-linux.tests -- -l
 
-# Run integration tests (boots a VM — slow):
+# Run the installer VM integration test (slow; only when a fresh VM is needed):
 nix build .#checks.x86_64-linux.installer-bootstrap
 ```
+
+`python3 tests/tests.py` accepts the same arguments when Python is already available on
+`PATH`; use the `nix run` form above for a self-contained command.
+
+### Selecting validation
+
+- Run the full **nmt unit suite** for nearly every code or configuration change. Use its
+  targeted form while iterating, then run the full suite before committing.
+- Run `nix build .#checks.x86_64-linux.installer-bootstrap` or `nix flake check` **only**
+  when the change needs a fresh NixOS VM to validate: installer `init` / `init --switch`
+  behavior, first-run or idempotency behavior, VM test infrastructure, or a genuinely new
+  end-to-end system flow.
+- Do not run a VM test solely because a change is written in Nix. Home Manager options,
+  packages, generated activation content, and `.config/` links should normally be covered
+  by nmt tests.
 
 ### When to add tests
 
@@ -118,8 +133,9 @@ Add a new **integration test** (`tests/integration/`) whenever you:
 
 - create a plan and present it to the user
 - make changes as needed
-- run `python3 tests/tests.py` to verify nmt unit tests pass
-- validate changes with `nix flake check`
+- run `nix run .#packages.x86_64-linux.tests` to verify the standard nmt validation
+- run the targeted VM integration test (or `nix flake check`) only when the change requires
+  fresh-VM, end-to-end validation as described above
 - commit changes
 
 ### `nix flake check` failures in cloud/CI environments
@@ -135,9 +151,9 @@ from `cache.nixos.org`, GNU mirrors, `www.python.org`, or other upstream hosts.
 A `Could not resolve host` error from a VM means a needed dependency was not
 seeded into the VM, not necessarily that the host network or cache is down.
 
-**Run targeted, offline-capable validation first.** Before running `nix flake check`, always
-run `python3 tests/tests.py` (nmt unit tests — no network, no VM). If those pass, proceed
-to `nix flake check` and inspect any failure carefully.
+**Run targeted, offline-capable validation first.** When a change requires `nix flake check`,
+always run `nix run .#packages.x86_64-linux.tests` first (nmt unit tests — no network, no
+VM). If those pass, proceed to `nix flake check` and inspect any failure carefully.
 
 When an integration test reports an external fetch attempt:
 1. Quote the **exact** error line(s) and identify the missing dependency or host.
@@ -160,5 +176,6 @@ code or test issue and investigate it normally.
 
 ## Commits guidance
 
-- When changing Nix or Home Manager config: run `nix flake check` to validate before committing.
+- Before committing, run the full nmt suite for code or configuration changes. Run
+  `nix flake check` only when the change meets the fresh-VM criteria in **Selecting validation**.
 - After any stopping point, commit with a descriptive message.
