@@ -15,8 +15,18 @@ in
     ];
 
     home.activation.installPi = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      if [ -x "${config.home.homeDirectory}/.local/bin/pi" ] \
-        || command -v pi >/dev/null 2>&1; then
+      pi_binary="${config.home.homeDirectory}/.local/bin/pi"
+      if [ ! -x "$pi_binary" ]; then
+        # Pi's installer puts the executable under a versioned bundled-Node directory.
+        for candidate in "${config.home.homeDirectory}/.local/share/pi-node/"*/bin/pi; do
+          if [ -x "$candidate" ]; then
+            pi_binary="$candidate"
+            break
+          fi
+        done
+      fi
+
+      if [ -x "$pi_binary" ] || command -v pi >/dev/null 2>&1; then
         echo "dotfiles: Pi is already installed"
       else
         echo "dotfiles: installing Pi via https://pi.dev/install.sh"

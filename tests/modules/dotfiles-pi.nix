@@ -11,6 +11,7 @@
     assertFileRegex activate 'installPi'
     assertFileContains activate 'https://pi.dev/install.sh'
     assertFileContains activate '/home/test-user/.local/bin/pi'
+    assertFileContains activate '/home/test-user/.local/share/pi-node/'
     assertFileContains activate '${pkgs.curl}/bin/curl'
     assertFileContains activate '${pkgs.bash}/bin/sh'
   '';
