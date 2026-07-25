@@ -1,7 +1,7 @@
 # Pi is intentionally installed outside the Nix store: its upstream installer
 # manages Pi's bundled Node runtime and self-updates.  Nix owns the surrounding
-# terminal dependencies (tmux, jq, and ripgrep) and invokes the installer exactly
-# once per user.
+# terminal dependencies (tmux and jq) and invokes the installer exactly once per
+# user.
 { config, lib, pkgs, ... }:
 let
   cfg = config.dotfiles;
@@ -11,7 +11,6 @@ in
     home.packages = with pkgs; [
       tmux
       jq
-      ripgrep
     ];
 
     home.activation.installPi = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

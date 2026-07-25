@@ -49,8 +49,8 @@ makeTest {
       # activation package to record displayed Home Manager news.
       aliceHomeConfig.config.news.json.output
       installerProgram
-      # Pi's declaratively managed terminal dependencies must also be present
-      # for the in-VM Home Manager evaluation; the VM has no outbound network.
+      # The packages verified below must be present for the in-VM Home Manager
+      # evaluation; the VM has no outbound network.
       pkgs.jq
       pkgs.ripgrep
     ];
@@ -158,9 +158,10 @@ makeTest {
             "test -L /home/alice/.config/oh-my-posh/themes/lambda.omp.json"
         )
 
-    with subtest("Pi terminal dependencies are available on PATH"):
-        # jq and ripgrep are listed in .flake-modules/home-manager/pi.nix and
-        # should be linked into the user's nix profile after activation.
+    with subtest("Pi and global packages are available on PATH"):
+        # jq is listed in .flake-modules/home-manager/pi.nix and ripgrep in
+        # .flake-modules/home-manager/packages.nix; both should be linked into
+        # the user's nix profile after activation.
         succeed_as_alice("test -x /home/alice/.nix-profile/bin/jq")
         succeed_as_alice("test -x /home/alice/.nix-profile/bin/rg")
 
