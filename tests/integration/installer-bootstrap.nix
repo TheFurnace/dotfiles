@@ -45,7 +45,14 @@ makeTest {
     system.extraDependencies = [
       aliceHomeConfig.activationPackage
       aliceHomeConfig.config.home.path
+      # `home-manager switch` builds this result separately from the
+      # activation package to record displayed Home Manager news.
+      aliceHomeConfig.config.news.json.output
       installerProgram
+      # Pi's declaratively managed terminal dependencies must also be present
+      # for the in-VM Home Manager evaluation; the VM has no outbound network.
+      pkgs.jq
+      pkgs.ripgrep
     ];
   };
 
@@ -151,9 +158,10 @@ makeTest {
             "test -L /home/alice/.config/oh-my-posh/themes/lambda.omp.json"
         )
 
-    with subtest("a package from packages.nix is available on PATH"):
-        # ripgrep is listed in .flake-modules/home-manager/packages.nix and
+    with subtest("Pi terminal dependencies are available on PATH"):
+        # jq and ripgrep are listed in .flake-modules/home-manager/pi.nix and
         # should be linked into the user's nix profile after activation.
+        succeed_as_alice("test -x /home/alice/.nix-profile/bin/jq")
         succeed_as_alice("test -x /home/alice/.nix-profile/bin/rg")
 
     with subtest("installer is idempotent on a second run"):
