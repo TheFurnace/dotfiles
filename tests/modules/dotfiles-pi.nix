@@ -7,6 +7,7 @@
   nmt.script = ''
     assertFileExists home-path/bin/tmux
     assertFileExists home-path/bin/jq
+    assertFileExists home-path/bin/python3
     assertFileRegex activate 'installPi'
     assertFileContains activate 'https://pi.dev/install.sh'
     assertFileContains activate '/home/test-user/.local/bin/pi'
