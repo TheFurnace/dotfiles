@@ -8,5 +8,6 @@
     assertFileExists home-files/.config/nvim/init.lua
     assertFileExists home-files/.config/kitty/kitty.conf
     assertFileExists home-files/.config/oh-my-posh/themes/lambda.omp.json
+    assertFileExists home-files/.config/powershell/Microsoft.PowerShell_profile.ps1
   '';
 }

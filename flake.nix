@@ -53,18 +53,21 @@
         ];
       };
 
-      devShellModule = import ./.flake-modules/dev-shell.nix {
-        inherit nixpkgs exampleHomeConfiguration;
-      };
-
       defaultSystem = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${defaultSystem};
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      pkgsFor = system: nixpkgs.legacyPackages.${system};
+
+      devShellModule = import ./.flake-modules/dev-shell.nix {
+        inherit nixpkgs supportedSystems;
+      };
 
       # Evaluate the full nmt test suite for the default system.  Individual
       # test derivations are exposed as legacyPackages.test-<name> so the
       # Python runner and `nix flake check` can discover and build them.
-      testSuite = import ./tests {
-        inherit self nix-index-database home-manager pkgs;
+      testSuiteFor = system: import ./tests {
+        inherit self nix-index-database home-manager;
+        pkgs = pkgsFor system;
       };
 
       installerModule = import ./.flake-modules/installer.nix {
@@ -75,7 +78,8 @@
       # because they boot real machines and exercise the user-facing
       # bootstrap flow end-to-end.
       integrationTests = import ./tests/integration {
-        inherit pkgs self home-manager nixpkgs nix-index-database;
+        inherit self home-manager nixpkgs nix-index-database;
+        pkgs = pkgsFor defaultSystem;
       };
     in
     {
@@ -94,20 +98,23 @@
 
       # Individual nmt test derivations, prefixed with "test-" so the Python
       # runner can discover them via `nix eval .#legacyPackages.${system}`.
-      legacyPackages.${defaultSystem} =
+      legacyPackages = forAllSystems (system:
         nixpkgs.lib.mapAttrs'
           (n: nixpkgs.lib.nameValuePair "test-${n}")
-          testSuite.build;
+          (builtins.removeAttrs (testSuiteFor system).build [ "all" ]));
 
       # Runnable test-runner script: `nix run .#packages.x86_64-linux.tests`
-      packages.${defaultSystem}.tests =
-        pkgs.callPackage ./tests/package.nix { flake = self; };
+      packages = forAllSystems (system: {
+        tests = (pkgsFor system).callPackage ./tests/package.nix { flake = self; };
+      });
 
       # `nix run github:TheFurnace/dotfiles -- init [--switch]` installer.
       apps = installerModule.apps;
 
       # Surface the integration tests so `nix flake check` runs them and
       # `nix build .#checks.x86_64-linux.<name>` works for ad-hoc invocation.
-      checks.${defaultSystem} = integrationTests;
+      checks = forAllSystems (system: {
+        nmt = (testSuiteFor system).build.all;
+      } // nixpkgs.lib.optionalAttrs (system == defaultSystem) integrationTests);
     };
 }

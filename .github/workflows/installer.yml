@@ -1,0 +1,40 @@
+name: Installer integration
+
+on:
+  pull_request:
+    paths:
+      - flake.nix
+      - flake.lock
+      - .flake-modules/installer.nix
+      - .flake-modules/lib/setup-shell.nix
+      - .flake-modules/home-manager/**
+      - tests/integration/**
+      - .github/workflows/installer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    name: Fresh NixOS VM bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            experimental-features = nix-command flakes
+            system-features = nixos-test benchmark big-parallel kvm
+      - name: Enable KVM access
+        run: |
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo chmod 666 /dev/kvm
+      - name: Build installer test
+        run: nix build --print-build-logs .#checks.x86_64-linux.installer-bootstrap

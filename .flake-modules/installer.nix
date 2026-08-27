@@ -7,6 +7,10 @@
 #   nix run github:TheFurnace/dotfiles -- init --switch
 #     Write the flake and immediately run `home-manager switch` to activate.
 #
+#   nix run github:TheFurnace/dotfiles -- init --switch --with-ai
+#     Activate, then explicitly install the fast-moving Pi and Codex CLIs
+#     outside Nix via their official installers.
+#
 #   sudo nix run github:TheFurnace/dotfiles -- setup-shell <fish|bash|pwsh>
 #     Add fish/bash/pwsh from the target user's nix profile to /etc/shells
 #     and chsh the target user to <shell>. Standalone (non-NixOS) Linux
@@ -35,8 +39,6 @@ let
   systems = [
     "x86_64-linux"
     "aarch64-linux"
-    "x86_64-darwin"
-    "aarch64-darwin"
   ];
 
   mkApp = system:
@@ -74,6 +76,8 @@ let
             echo "                  experimental-features = nix-command flakes"
             echo "  init --switch   Write the flake, ensure user-level flake support for"
             echo "                  child commands, and activate with home-manager switch"
+            echo "  init --switch --with-ai"
+            echo "                  Activate, then install Pi and Codex outside Nix"
             echo ""
             echo "  setup-shell <fish|bash|pwsh>"
             echo "                  Compatibility path. Must be run with sudo. Adds the"
@@ -258,9 +262,11 @@ $NIX_CONFIG"
 
           # ── parse flags ──────────────────────────────────────────────────────
           DO_SWITCH=false
+          INSTALL_AI=false
           for arg in "$@"; do
             case "$arg" in
               --switch) DO_SWITCH=true ;;
+              --with-ai) INSTALL_AI=true ; DO_SWITCH=true ;;
               *)
                 echo "Unknown option: $arg"
                 usage
@@ -351,6 +357,7 @@ $NIX_CONFIG"
               printf '%s\n' '  outputs = { dotfiles, ... }: {'
               printf '%s\n' "    homeConfigurations.\"$DOTFILES_USER\" ="
               printf '%s\n' '      dotfiles.lib.mkHomeConfiguration {'
+              printf '%s\n' '        system        = "${system}";'
               printf '%s\n' "        username      = \"$DOTFILES_USER\";"
               printf '%s\n' "        homeDirectory = \"$DOTFILES_HOME\";"
               printf '%s\n' "        stateVersion  = \"$DOTFILES_STATE_VERSION\";"
@@ -368,6 +375,9 @@ $NIX_CONFIG"
           # ── activate (only with --switch) ────────────────────────────────────
           if $DO_SWITCH; then
             home-manager switch -b backup --flake "$HM_CONFIG_DIR#$DOTFILES_USER"
+            if $INSTALL_AI; then
+              "$DOTFILES_HOME/.nix-profile/bin/dotfiles-ai" install all
+            fi
             report_login_shell_status
           fi
         '';

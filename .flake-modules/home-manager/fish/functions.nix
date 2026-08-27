@@ -36,35 +36,6 @@ in
         '';
       };
 
-      claude-web = {
-        description = "Claude with unrestricted internet (git credentials blocked)";
-        body = ''
-          set -x GIT_CONFIG_PARAMETERS "'credential.helper='"
-          set -x GIT_TERMINAL_PROMPT 0
-          claude $argv
-        '';
-      };
-
-      dotfiles-git = {
-        wraps = "git";
-        description = "Run git against the dotfiles repository";
-        body = ''
-          # Note: the previous symlink-detection fallback (for a normal repo
-          # managed via mutable xdg.configFile symlinks) cannot work here because
-          # programs.fish.functions embeds the body in Nix; the function file no
-          # longer lives as a symlink into the dotfiles checkout. Use bare-repo
-          # mode instead.
-  
-          # Bare repo mode: ~/.dotfiles/ is a bare git repo; work-tree is $HOME
-          if test -f $HOME/.dotfiles/HEAD
-              git --git-dir=$HOME/.dotfiles --work-tree=$HOME $argv
-              return
-          end
-          echo "dotfiles-git: could not locate dotfiles repository" >&2
-          return 1
-        '';
-      };
-
       ls = {
         wraps = "ls";
         description = "List directory contents";

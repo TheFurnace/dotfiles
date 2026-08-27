@@ -120,21 +120,16 @@ makeTest {
         )
 
     with subtest("nix run installer completes successfully"):
-        # The Pi bootstrap is separately unit-tested. Avoid downloading mutable
-        # upstream installer content in this offline/reproducible VM test by
-        # emulating the Pi executable at the official install location.
-        machine.succeed(
-            "mkdir -p /home/alice/.local/bin && "
-            "printf '#!/bin/sh\\nexit 0\\n' > /home/alice/.local/bin/pi && "
-            "chmod +x /home/alice/.local/bin/pi && "
-            "chown -R alice:users /home/alice/.local"
-        )
         # Flake already exists from plain init; init --switch should reuse it.
         succeed_as_alice(f"{installer_env} nix run dotfiles -- init --switch")
 
     with subtest("Home Manager flake was written to XDG config home"):
         machine.succeed(
             "test -f /home/alice/.config/home-manager/flake.nix"
+        )
+        machine.succeed(
+            "grep -F 'system        = \"x86_64-linux\";' "
+            "/home/alice/.config/home-manager/flake.nix"
         )
 
     with subtest("Home Manager profile and gcroot exist"):
@@ -158,12 +153,10 @@ makeTest {
             "test -L /home/alice/.config/oh-my-posh/themes/lambda.omp.json"
         )
 
-    with subtest("Pi and global packages are available on PATH"):
-        # jq is listed in .flake-modules/home-manager/pi.nix and ripgrep in
-        # .flake-modules/home-manager/packages.nix; both should be linked into
-        # the user's nix profile after activation.
+    with subtest("AI manager and core packages are available on PATH"):
         succeed_as_alice("test -x /home/alice/.nix-profile/bin/jq")
         succeed_as_alice("test -x /home/alice/.nix-profile/bin/rg")
+        succeed_as_alice("test -x /home/alice/.nix-profile/bin/dotfiles-ai")
 
     with subtest("installer is idempotent on a second run"):
         first_gen = machine.succeed(

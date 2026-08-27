@@ -30,5 +30,25 @@
       default = "";
       description = "Forwarded to the Home Manager module when mutable = true.";
     };
+
+    features = {
+      desktop.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Forward the desktop feature selection to Home Manager.";
+      };
+
+      development.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Forward the development feature selection to Home Manager.";
+      };
+
+      aiTools.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Forward the external AI tool manager selection to Home Manager.";
+      };
+    };
   };
 }

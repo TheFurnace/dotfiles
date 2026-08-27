@@ -7,5 +7,6 @@
     assertPathNotExists home-files/.config/kitty
     assertPathNotExists home-files/.config/oh-my-posh
     assertPathNotExists home-path/bin/dotfiles-setup-shell
+    assertPathNotExists home-path/bin/dotfiles-ai
   '';
 }

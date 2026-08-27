@@ -17,8 +17,8 @@ in
     programs.bash = {
       enable = true;
       initExtra = ''
-        if [ -f ~/.config/oh-my-posh/themes/lambda.omp.json ]; then
-          eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init bash --config ~/.config/oh-my-posh/themes/lambda.omp.json)"
+        if [ -f ${lib.escapeShellArg "${config.xdg.configHome}/oh-my-posh/themes/lambda.omp.json"} ]; then
+          eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init bash --config ${lib.escapeShellArg "${config.xdg.configHome}/oh-my-posh/themes/lambda.omp.json"})"
         fi
 
         source <(${pkgs.nix-your-shell}/bin/nix-your-shell bash)

@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  modules:
+    name: Home Manager module tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+      - name: Run nmt suite
+        run: nix run .#packages.x86_64-linux.tests
+
+  flake-shape:
+    name: Evaluate Linux outputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+      - name: Evaluate x86_64 and aarch64 outputs
+        run: |
+          nix eval .#packages.x86_64-linux --apply builtins.attrNames
+          nix eval .#packages.aarch64-linux --apply builtins.attrNames
+          nix eval .#apps.x86_64-linux --apply builtins.attrNames
+          nix eval .#apps.aarch64-linux --apply builtins.attrNames
