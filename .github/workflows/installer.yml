@@ -1,0 +1,34 @@
+name: Installer integration
+
+on:
+  pull_request:
+    paths:
+      - flake.nix
+      - flake.lock
+      - .flake-modules/installer.nix
+      - .flake-modules/lib/setup-shell.nix
+      - .flake-modules/home-manager/**
+      - tests/integration/**
+      - .github/workflows/installer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    name: Fresh-home bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            experimental-features = nix-command flakes
+      - name: Run installer test
+        run: nix run --print-build-logs .#installer-bootstrap-test -- --with-sudo

@@ -13,6 +13,7 @@ in
     stateVersion,
     mutable ? false,
     localPath ? "",
+    features ? { },
     extraModules ? [ ],
     extraSpecialArgs ? { },
   }:
@@ -27,6 +28,7 @@ in
           dotfiles = {
             enable = true;
             inherit username homeDirectory mutable localPath;
+            inherit features;
           };
 
           home.stateVersion = stateVersion;
@@ -45,6 +47,7 @@ in
     nixosStateVersion ? stateVersion,
     mutable ? false,
     localPath ? "",
+    features ? { },
     user ? { },
     extraModules ? [ ],
     extraSpecialArgs ? { },
@@ -78,6 +81,7 @@ in
             username = username;
             homeDirectory = effectiveHomeDirectory;
             inherit stateVersion mutable localPath;
+            inherit features;
           };
         })
       ] ++ extraModules;

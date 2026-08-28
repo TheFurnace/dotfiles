@@ -34,7 +34,7 @@
   sudoCommand,
 
   # Bash text shown when the requested shell isn't in the target user's nix
-  # profile yet, e.g. "nix run github:TheFurnace/dotfiles -- init --switch".
+  # profile yet, e.g. "nix run github:TheFurnace/dotfiles".
   initSwitchCommand,
 }:
 ''

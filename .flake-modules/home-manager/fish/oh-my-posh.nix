@@ -5,7 +5,7 @@ in
 {
   config = lib.mkIf cfg.enable {
     programs.fish.interactiveShellInit = lib.mkAfter ''
-      ${pkgs.oh-my-posh}/bin/oh-my-posh init fish --config ~/.config/oh-my-posh/themes/lambda.omp.json | source
+      ${pkgs.oh-my-posh}/bin/oh-my-posh init fish --config ${lib.escapeShellArg "${config.xdg.configHome}/oh-my-posh/themes/lambda.omp.json"} | source
     '';
   };
 }

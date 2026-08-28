@@ -28,6 +28,7 @@ in
         homeDirectory = effectiveHomeDirectory;
         mutable = cfg.mutable;
         localPath = cfg.localPath;
+        features = cfg.features;
       };
 
       home.stateVersion = cfg.stateVersion;

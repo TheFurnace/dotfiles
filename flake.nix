@@ -35,6 +35,24 @@
         inherit nixpkgs home-manager homeModule nixosModule;
       };
 
+      # Unlike the generic library surface above, these repository-local
+      # values make a clone directly activatable. Keep personalization in one
+      # obvious file instead of scattering identity through flake.nix.
+      directDefaults = import ./defaults.nix;
+
+      defaultHomeConfiguration = helperLib.mkHomeConfiguration {
+        inherit (directDefaults) system username homeDirectory;
+        stateVersion = directDefaults.homeStateVersion;
+        extraModules = directDefaults.homeModules;
+      };
+
+      defaultNixosConfiguration = helperLib.mkNixosConfiguration {
+        inherit (directDefaults) system hostname username homeDirectory;
+        stateVersion = directDefaults.homeStateVersion;
+        inherit (directDefaults) nixosStateVersion;
+        extraModules = directDefaults.nixosModules;
+      };
+
       exampleHomeConfiguration = helperLib.mkHomeConfiguration {
         username = "demo";
         homeDirectory = "/home/demo";
@@ -53,30 +71,44 @@
         ];
       };
 
-      devShellModule = import ./.flake-modules/dev-shell.nix {
-        inherit nixpkgs exampleHomeConfiguration;
-      };
-
       defaultSystem = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${defaultSystem};
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      pkgsFor = system: nixpkgs.legacyPackages.${system};
+
+      devShellModule = import ./.flake-modules/dev-shell.nix {
+        inherit nixpkgs supportedSystems;
+      };
 
       # Evaluate the full nmt test suite for the default system.  Individual
       # test derivations are exposed as legacyPackages.test-<name> so the
       # Python runner and `nix flake check` can discover and build them.
-      testSuite = import ./tests {
-        inherit self nix-index-database home-manager pkgs;
+      testSuiteFor = system: import ./tests {
+        inherit self nix-index-database home-manager;
+        pkgs = pkgsFor system;
       };
 
       installerModule = import ./.flake-modules/installer.nix {
         inherit nixpkgs home-manager self;
       };
 
-      # NixOS VM integration tests.  Kept separate from the nmt suite above
-      # because they boot real machines and exercise the user-facing
-      # bootstrap flow end-to-end.
-      integrationTests = import ./tests/integration {
-        inherit pkgs self home-manager nixpkgs nix-index-database;
+      # Host-side integration runners. Kept separate from checks because they
+      # execute nested Nix operations through the daemon after being built.
+      integrationTestRunners = import ./tests/integration {
+        inherit self home-manager nixpkgs nix-index-database;
+        pkgs = pkgsFor defaultSystem;
       };
+
+      # Force the important values in both direct configurations without
+      # making the fast check build an entire NixOS system closure.
+      directConfigurationsCheck =
+        assert defaultHomeConfiguration.config.home.username == directDefaults.username;
+        assert defaultHomeConfiguration.config.home.homeDirectory == directDefaults.homeDirectory;
+        assert defaultNixosConfiguration.config.networking.hostName == directDefaults.hostname;
+        assert defaultNixosConfiguration.config.users.users.${directDefaults.username}.isNormalUser;
+        (pkgsFor directDefaults.system).runCommand "dotfiles-direct-configurations" { } ''
+          touch "$out"
+        '';
     in
     {
       # Public helpers for downstream flakes.
@@ -86,28 +118,40 @@
       homeManagerModules.default = homeModule;
       nixosModules.default = nixosModule;
 
-      # Small built-in examples that also exercise the exported helpers.
-      homeConfigurations.example = exampleHomeConfiguration;
+      # Direct clone targets plus small generic examples of the helpers.
+      homeConfigurations = {
+        default = defaultHomeConfiguration;
+        example = exampleHomeConfiguration;
+      };
 
-      nixosConfigurations.example = exampleNixosConfiguration;
+      nixosConfigurations = {
+        default = defaultNixosConfiguration;
+        example = exampleNixosConfiguration;
+      };
       devShells = devShellModule.devShells;
 
       # Individual nmt test derivations, prefixed with "test-" so the Python
       # runner can discover them via `nix eval .#legacyPackages.${system}`.
-      legacyPackages.${defaultSystem} =
+      legacyPackages = forAllSystems (system:
         nixpkgs.lib.mapAttrs'
           (n: nixpkgs.lib.nameValuePair "test-${n}")
-          testSuite.build;
+          (builtins.removeAttrs (testSuiteFor system).build [ "all" ]));
 
       # Runnable test-runner script: `nix run .#packages.x86_64-linux.tests`
-      packages.${defaultSystem}.tests =
-        pkgs.callPackage ./tests/package.nix { flake = self; };
+      packages = forAllSystems (system: {
+        tests = (pkgsFor system).callPackage ./tests/package.nix { flake = self; };
+      } // nixpkgs.lib.optionalAttrs (system == defaultSystem) {
+        installer-bootstrap-test = integrationTestRunners.installer-bootstrap;
+      });
 
-      # `nix run github:TheFurnace/dotfiles -- init [--switch]` installer.
+      # `nix run github:TheFurnace/dotfiles` interactive installer.
       apps = installerModule.apps;
 
-      # Surface the integration tests so `nix flake check` runs them and
-      # `nix build .#checks.x86_64-linux.<name>` works for ad-hoc invocation.
-      checks.${defaultSystem} = integrationTests;
+      checks = forAllSystems (system: {
+        nmt = (testSuiteFor system).build.all;
+      }
+      // nixpkgs.lib.optionalAttrs (system == directDefaults.system) {
+        direct-configurations = directConfigurationsCheck;
+      });
     };
 }

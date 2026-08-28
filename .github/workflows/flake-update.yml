@@ -19,8 +19,10 @@ jobs:
         uses: nixbuild/nix-quick-install-action@v34
       - name: Update flake inputs
         run: nix flake update
-      - name: Validate updated flake
-        run: nix flake check
+      - name: Validate modules
+        run: nix run .#packages.x86_64-linux.tests
+      - name: Validate bootstrap
+        run: nix run .#installer-bootstrap-test -- --with-sudo
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
@@ -30,6 +32,6 @@ jobs:
             Automated `nix flake update` run.
 
             - Updated `flake.lock`
-            - Verified the result with `nix flake check`
+            - Verified Home Manager modules and the isolated bootstrap flow
           branch: automation/nix-flake-update
           delete-branch: true

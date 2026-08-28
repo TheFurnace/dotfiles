@@ -35,5 +35,28 @@
         Required, and only used, when mutable = true.
       '';
     };
+
+    features = {
+      desktop.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Install graphical terminal and font integration.";
+      };
+
+      development.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Install language tooling, GitHub CLI, and PowerShell.";
+      };
+
+      aiTools.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Install dependencies and the dotfiles-ai manager for fast-moving
+          coding agents. Pi and Codex themselves remain outside the Nix store.
+        '';
+      };
+    };
   };
 }

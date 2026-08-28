@@ -1,463 +1,237 @@
 # dotfiles
 
-Plug-and-play dotfiles for Home Manager and NixOS.
+A reusable Linux environment built with Nix and Home Manager.
 
-## Table of contents
+The repository has two deliberately separate layers:
 
-- [What the module configures](#what-the-module-configures)
-- [NixOS: full plug-and-play setup](#nixos-full-plug-and-play-setup)
-  - [Example](#example)
-  - [Mutable mode on NixOS](#mutable-mode-on-nixos)
-- [Non-NixOS or standalone Home Manager](#non-nixos-or-standalone-home-manager)
-  - [Quick install](#quick-install)
-  - [Example](#example-1)
-  - [One-time login shell step on non-NixOS](#one-time-login-shell-step-on-non-nixos)
-- [Standalone configs bundled in this repo](#standalone-configs-bundled-in-this-repo)
-- [NixOS helper options: `lib.mkNixosConfiguration`](#nixos-helper-options-libmknixosconfiguration)
-- [Module options](#module-options)
-  - [Home Manager module: `homeManagerModules.default`](#home-manager-module-homemanagermodulesdefault)
-  - [NixOS module: `nixosModules.default`](#nixos-module-nixosmodulesdefault)
-- [Updating this flake when used as an input](#updating-this-flake-when-used-as-an-input)
-- [Testing](#testing)
-- [Development shell](#development-shell)
-- [Notes](#notes)
+- **Nix core** — reproducible packages, shell configuration, editor settings,
+  terminal configuration, and reusable Home Manager/NixOS modules.
+- **Edge tools** — Pi and Codex are installed outside Nix by an explicit
+  `dotfiles-ai` command so they can follow upstream releases without waiting
+  for the flake lock to move.
 
-This flake now exposes four useful entry points:
+The supported systems are `x86_64-linux` and `aarch64-linux`. The intended
+deployment targets are NixOS, standalone Home Manager, and generic Linux
+environments such as Debian, Ubuntu, and WSL.
 
-- `homeManagerModules.default` — use this in standalone Home Manager or on non-NixOS systems
-- `nixosModules.default` — use this on NixOS for the full plug-and-play setup, including fish as the user's login shell
-- `lib.mkHomeConfiguration` — helper for creating a standalone Home Manager configuration without copying boilerplate
-- `lib.mkNixosConfiguration` — helper for creating a NixOS configuration with the dotfiles module and a fish login shell already wired
+## Use a clone directly
 
-## What the module configures
+Clone the repository and edit [`defaults.nix`](defaults.nix) once for the
+target user and machine:
 
-The module installs or enables everything needed for the environment in this repo:
-
-- `fish`
-- `oh-my-posh`
-- `git`
-- `kitty`
-- `neovim`
-- `direnv` + `nix-direnv`
-- `nix-index-database` + `comma`
-- `nix-your-shell`
-- `fira-code` plus user fontconfig so the kitty font setting works
-- `tmux`
-- [Pi](https://pi.dev), bootstrapped by its official installer outside the Nix store
-
-Pi intentionally uses a hybrid installation: Home Manager installs `tmux`, while
-its activation script runs `curl -fsSL https://pi.dev/install.sh | sh` only when
-neither `~/.local/bin/pi` (the installer location) nor `pi` on `PATH` exists.
-This lets Pi retain ownership of its bundled runtime
-and self-updates without making every rebuild reinstall it. The first activation
-therefore requires network access; subsequent activations only report that Pi is
-already installed.
-
-Git aliases and editor settings are included, but `git user.name` and `git user.email` are intentionally left unset so the flake stays generic.
-
-Config files are sourced directly from `.config/`:
-
-| Program | Source directory |
-|---|---|
-| Git | `.config/git/` |
-| Kitty | `.config/kitty/` |
-| Neovim | `.config/nvim/` |
-| oh-my-posh | `.config/oh-my-posh/` |
-
-Fish shell is configured via `programs.fish` (Home Manager's built-in module), so its shell init, functions, and tool hooks are all declared in Nix rather than stored under `.config/fish/`. The oh-my-posh prompt and nix-your-shell hook are wired automatically through `programs.fish.interactiveShellInit`.
-
----
-
-## NixOS: full plug-and-play setup
-
-On NixOS, use `dotfiles.nixosModules.default`.
-
-This module:
-
-- imports Home Manager for you
-- installs all required packages
-- configures all files under `.config/`
-- enables fish system-wide
-- sets the target user's shell to fish
-- wires oh-my-posh automatically
-
-### Example
-
-You can wire the NixOS module manually:
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    dotfiles = {
-      url = "github:TheFurnace/dotfiles";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
-
-  outputs = { self, nixpkgs, dotfiles, ... }: {
-    nixosConfigurations.my-machine = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./configuration.nix
-        dotfiles.nixosModules.default
-        {
-          users.users.ferndq = {
-            isNormalUser = true;
-            extraGroups = [ "wheel" ];
-          };
-
-          dotfiles = {
-            enable = true;
-            username = "ferndq";
-            stateVersion = "25.11";
-          };
-        }
-      ];
-    };
-  };
-}
+```sh
+git clone https://github.com/TheFurnace/dotfiles.git
+cd dotfiles
+$EDITOR defaults.nix
 ```
 
-Or use the helper this flake exports:
+The file supplies the built-in `default` configurations while the exported
+modules and constructors remain generic.
+
+For standalone Home Manager, build and activate the configuration without
+creating a second consumer flake:
+
+```sh
+nix build .#homeConfigurations.default.activationPackage
+./result/activate
+```
+
+If the Home Manager CLI is already installed, the usual command is equivalent:
+
+```sh
+home-manager switch --flake .#default
+```
+
+On NixOS, first replace the tracked hardware placeholder with the configuration
+generated for that machine. Add any other host-specific modules, including the
+appropriate boot-loader configuration, to `nixosModules` in `defaults.nix`.
+Then activate the direct NixOS target:
+
+```sh
+cp /etc/nixos/hardware-configuration.nix nixos/hardware-configuration.nix
+$EDITOR defaults.nix
+sudo nixos-rebuild switch --flake .#default
+```
+
+The tracked placeholder contains low-priority fallbacks for a conventional
+UEFI system with an ext4 root labelled `nixos`, solely so a fresh clone remains
+evaluable. Do not treat those as a substitute for the generated machine file.
+The default output also provides the user, Home Manager environment, Fish login
+shell, hostname, and state versions.
+
+## Interactive install
+
+Cloning is optional for standalone Home Manager. With a flake-enabled Nix
+installation, launch the installer directly:
+
+```sh
+nix run github:TheFurnace/dotfiles
+```
+
+The installer detects the current user and platform, asks for the few settings
+that belong to the consumer, shows the complete plan, and activates after one
+final confirmation. It can also install Pi and Codex as an explicit interactive
+choice.
+
+Generated configurations are safe to rerun. If an unrelated Home Manager flake
+already exists, the installer asks before moving it to a `.pre-dotfiles` backup;
+the unattended mode refuses to replace it. Unrelated settings in the user's
+`nix.conf` are preserved.
+
+For CI or other automation, provide identity through the existing environment
+overrides and skip prompts explicitly:
+
+```sh
+DOTFILES_USER=me DOTFILES_HOME=/home/me \
+  nix run github:TheFurnace/dotfiles -- --unattended
+```
+
+On non-NixOS Linux, activation installs `dotfiles-setup-shell`. Run the
+suggested command once if Fish should become the login shell:
+
+```sh
+sudo ~/.nix-profile/bin/dotfiles-setup-shell fish
+```
+
+## Managing Pi and Codex
+
+Nix installs the stable dependencies and the `dotfiles-ai` manager, but never
+runs a network installer during Home Manager activation.
+
+```sh
+dotfiles-ai status
+dotfiles-ai install all
+dotfiles-ai update all
+dotfiles-ai update pi
+dotfiles-ai update codex
+```
+
+Pi is installed from the [official Pi installer](https://pi.dev/docs/latest).
+Codex is installed and updated using the [official Codex standalone
+installer](https://learn.chatgpt.com/docs/codex/cli). Because both commands run
+remote upstream installers, they are always explicit user actions.
+
+## Use as a standalone Home Manager module
 
 ```nix
 {
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    dotfiles = {
-      url = "github:TheFurnace/dotfiles";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
+  inputs.dotfiles.url = "github:TheFurnace/dotfiles";
 
   outputs = { dotfiles, ... }: {
-    nixosConfigurations.my-machine = dotfiles.lib.mkNixosConfiguration {
-      hostname = "my-machine";
-      username = "ferndq";
+    homeConfigurations.me = dotfiles.lib.mkHomeConfiguration {
+      system = "x86_64-linux";
+      username = "me";
+      homeDirectory = "/home/me";
       stateVersion = "25.11";
-      extraModules = [ ./configuration.nix ];
     };
   };
 }
 ```
 
-There is also a built-in `nixosConfigurations.example` output in this flake as a minimal reference configuration.
-
-Then apply normally:
-
-```bash
-sudo nixos-rebuild switch --flake .#my-machine
-```
-
-### Mutable mode on NixOS
-
-For live editing from a local checkout:
+For a smaller headless environment, disable optional feature groups:
 
 ```nix
-dotfiles = {
-  enable = true;
-  username = "ferndq";
-  stateVersion = "25.11";
-
-  mutable = true;
-  localPath = "/home/ferndq/repos/dotfiles";
+features = {
+  desktop.enable = false;
+  development.enable = false;
+  aiTools.enable = false;
 };
 ```
 
-In mutable mode, edits to existing files under `.config/` take effect immediately. Adding or removing files still requires a rebuild.
+## Use from NixOS
 
-If your NixOS user has a nonstandard home directory, also set `dotfiles.homeDirectory` to match it.
-
----
-
-## Non-NixOS or standalone Home Manager
-
-### Quick install
-
-Run the installer directly from this flake — no local clone required:
-
-```bash
-nix run github:TheFurnace/dotfiles -- init
-```
-
-This writes `$XDG_CONFIG_HOME/home-manager/flake.nix` (typically
-`~/.config/home-manager/flake.nix`) wired to pull in this flake's Home Manager
-module.  It mirrors the `home-manager init` pattern so you can inspect or
-customise the generated flake before activating.
-
-If a `flake.nix` already exists at that path, `init` skips writing and leaves
-the existing file untouched.  Delete it first if you want to regenerate from
-scratch.
-
-Once you are happy with the flake, activate with:
-
-```bash
-home-manager switch -b backup --flake ~/.config/home-manager#<your-username>
-```
-
-Or, to write the flake **and** immediately activate the environment in one step
-(skips writing if the file already exists):
-
-```bash
-nix run github:TheFurnace/dotfiles -- init --switch
-```
-
-The installer detects your username and home directory automatically.
-
-#### Environment overrides
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `DOTFILES_USER` | `$USER` / `id -un` | Unix username for the Home Manager profile |
-| `DOTFILES_HOME` | `$HOME` | Absolute path to your home directory |
-| `DOTFILES_STATE_VERSION` | `25.11` | Home Manager state version |
-| `DOTFILES_URL` | `github:TheFurnace/dotfiles` | Dotfiles flake URL (useful for testing a local checkout: `DOTFILES_URL=/path/to/checkout nix run .#default`) |
-| `DOTFILES_NIXPKGS_URL` | _(unset)_ | Optional nixpkgs override for the installer flake. When unset, the generated flake follows `dotfiles/nixpkgs` from the dotfiles lock file. |
-| `DOTFILES_HOME_MANAGER_URL` | _(unset)_ | Optional home-manager override for the installer flake. When unset, the generated flake follows `dotfiles/home-manager` from the dotfiles lock file. |
-
-On non-NixOS, use `dotfiles.homeManagerModules.default`.
-
-This installs the same user environment, enables `programs.home-manager`, and wires fish + oh-my-posh automatically, but there is one platform limitation to be aware of:
-
-- Home Manager can install and configure fish
-- Home Manager cannot reliably change the system login shell on non-NixOS by itself
-
-So the setup is almost entirely plug-and-play, but changing the OS-level login shell is still a one-time system step outside Home Manager.
-
-### Example
-
-You can still wire the module manually:
+The helper provisions the user, imports Home Manager, and sets Fish as the
+login shell:
 
 ```nix
 {
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.dotfiles.url = "github:TheFurnace/dotfiles";
 
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    dotfiles = {
-      url = "github:TheFurnace/dotfiles";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
-
-  outputs = { self, nixpkgs, home-manager, dotfiles, ... }:
-    let
+  outputs = { dotfiles, ... }: {
+    nixosConfigurations.workstation = dotfiles.lib.mkNixosConfiguration {
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-    in {
-      homeConfigurations.ferndq = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = [
-          dotfiles.homeManagerModules.default
-          {
-            dotfiles = {
-              enable = true;
-              username = "ferndq";
-              homeDirectory = "/home/ferndq";
-            };
-
-            home.stateVersion = "25.11";
-          }
-        ];
-      };
-    };
-}
-```
-
-Or, more simply, use the helper this flake exports:
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    dotfiles = {
-      url = "github:TheFurnace/dotfiles";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
-
-  outputs = { self, dotfiles, ... }: {
-    homeConfigurations.ferndq = dotfiles.lib.mkHomeConfiguration {
-      username = "ferndq";
-      homeDirectory = "/home/ferndq";
+      hostname = "workstation";
+      username = "me";
       stateVersion = "25.11";
     };
   };
 }
 ```
 
-Apply it with:
+Lower-level consumers can import `homeManagerModules.default` or
+`nixosModules.default` directly.
 
-```bash
-git add -A
-home-manager switch -b backup --flake .#ferndq
-```
+## Mutable development mode
 
-When fish is your login shell in standalone Home Manager mode, `programs.fish` ensures the Home Manager profile is on `PATH` automatically.
-
-### One-time login shell step on non-NixOS
-
-After the first activation, fish and oh-my-posh are installed and ready. If you also want your OS login shell to be fish, run:
-
-```bash
-chsh -s "$(command -v fish)"
-```
-
-Depending on the distro, the fish path may need to exist in `/etc/shells` first.
-
----
-
-## Standalone configs bundled in this repo
-
-This flake exposes a generic standalone example configuration at `.#example`:
-
-```bash
-git add -A
-nix flake check
-home-manager switch -b backup --flake .#example
-```
-
-Treat that built-in output as an example. For real usage, standalone consumption is better done with `dotfiles.lib.mkHomeConfiguration`, which lets another flake create a Home Manager configuration with just:
+Immutable mode is the default: configuration is copied through the Nix store.
+Mutable mode creates out-of-store links to a checkout so edits to existing
+files take effect without rebuilding:
 
 ```nix
-dotfiles.lib.mkHomeConfiguration {
-  username = "ferndq";
-  homeDirectory = "/home/ferndq";
-  stateVersion = "25.11";
-}
+mutable = true;
+localPath = "/home/me/src/dotfiles";
 ```
 
-The helper also supports:
+Adding or removing a file still requires a Home Manager rebuild because the
+set of managed paths changes.
 
-- `system`
-- `mutable`
-- `localPath`
-- `extraModules`
-- `extraSpecialArgs`
+## What is managed
 
-## NixOS helper options: `lib.mkNixosConfiguration`
+The default feature set includes:
 
-`mkNixosConfiguration` accepts:
+- Fish and Bash initialization, oh-my-posh, direnv, zoxide, and nix-your-shell
+- Git, Neovim, ripgrep, and nix-index-database/comma
+- Kitty and Fira Code (`features.desktop.enable`)
+- language tooling, GitHub CLI, Python, and PowerShell
+  (`features.development.enable`)
+- tmux, jq, Python, and `dotfiles-ai` (`features.aiTools.enable`)
 
-- `hostname`
-- `username`
-- `homeDirectory` (optional; defaults to `/home/${username}`. If your NixOS user has a different home path, set this explicitly.)
-- `stateVersion` for Home Manager
-- `nixosStateVersion` (defaults to `stateVersion`)
-- `system`
-- `mutable`
-- `localPath`
-- `user` for extra `users.users.<name>` fields
-- `extraModules`
-- `extraSpecialArgs`
+Files below `.config/` are discovered recursively and installed through
+`xdg.configFile`. Fish configuration is expressed through Home Manager's
+`programs.fish` module instead of a checked-in Fish directory.
 
----
+Machine identity, secrets, Git author identity, and host-specific NixOS
+configuration belong in the consuming repository.
 
-## Module options
+## Outputs
 
-### Home Manager module: `homeManagerModules.default`
+| Output | Purpose |
+|---|---|
+| `homeManagerModules.default` | Reusable Home Manager module |
+| `nixosModules.default` | NixOS integration around the Home Manager module |
+| `lib.mkHomeConfiguration` | Standalone Home Manager constructor |
+| `lib.mkNixosConfiguration` | NixOS system constructor |
+| `homeConfigurations.default` | Direct standalone configuration from `defaults.nix` |
+| `nixosConfigurations.default` | Direct NixOS configuration from `defaults.nix` |
+| `apps.<system>.default` | Interactive install and login-shell setup |
+| `packages.<system>.tests` | nmt test runner |
+| `checks.<system>.nmt` | Aggregate module test suite |
+| `checks.x86_64-linux.direct-configurations` | Evaluation check for both direct defaults |
+| `packages.x86_64-linux.installer-bootstrap-test` | Isolated fresh-home bootstrap runner |
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `dotfiles.enable` | `bool` | `false` | Enable the module. |
-| `dotfiles.username` | `str` | — | Sets `home.username`. |
-| `dotfiles.homeDirectory` | `str` | — | Sets `home.homeDirectory`. |
-| `dotfiles.mutable` | `bool` | `false` | Use live symlinks into a local checkout instead of store copies. |
-| `dotfiles.localPath` | `str` | `""` | Required when `dotfiles.mutable = true`. |
+## Development and tests
 
-### NixOS module: `nixosModules.default`
+```sh
+# Enter an isolated development shell.
+nix develop
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `dotfiles.enable` | `bool` | `false` | Enable the NixOS integration. |
-| `dotfiles.username` | `str` | — | User whose Home Manager profile should receive the dotfiles. |
-| `dotfiles.homeDirectory` | `null or str` | `null` | Optional home directory override. Defaults to `/home/<name>`. If your NixOS user uses a different home path, set this explicitly. |
-| `dotfiles.stateVersion` | `str` | — | Home Manager state version for that user. |
-| `dotfiles.mutable` | `bool` | `false` | Forwarded to the Home Manager module. |
-| `dotfiles.localPath` | `str` | `""` | Forwarded to the Home Manager module when mutable mode is enabled. |
-
----
-
-## Updating this flake when used as an input
-
-In the consuming repo:
-
-```bash
-nix flake update dotfiles
-```
-
-Then rebuild with either `nixos-rebuild` or `home-manager switch`, depending on how you consume it.
-
----
-
-## Testing
-
-This flake includes an [nmt](https://git.sr.ht/~rycee/nmt) unit test suite and a NixOS VM integration test for the installer.
-
-**Run unit tests:**
-
-```bash
-nix run .#packages.x86_64-linux.tests
-```
-
-Pass `-l` to list all available tests, or a substring to filter by name:
-
-```bash
+# List or run the fast Home Manager module tests.
 nix run .#packages.x86_64-linux.tests -- -l
-nix run .#packages.x86_64-linux.tests -- config
-```
+nix run .#packages.x86_64-linux.tests
 
-**Run the installer integration test (NixOS VM):**
+# Run one subset while iterating.
+nix run .#packages.x86_64-linux.tests -- ai
 
-```bash
-nix build .#checks.x86_64-linux.installer-bootstrap
-```
+# Validate the real bootstrap flow with an empty home and closure-only PATH.
+nix run .#installer-bootstrap-test
 
-**Run all checks at once:**
-
-```bash
+# Evaluate/build every check for the current system.
 nix flake check
 ```
 
-### Integration-test networking
+Use nmt tests for normal module/configuration work. Run the installer
+integration test when the installer, generated consumer flake, or
+first-activation behavior changes.
 
-NixOS integration-test VMs use the NixOS test framework's isolated VDE network.
-They do **not** have general outbound DNS or Internet access, even when the host
-can resolve and reach `cache.nixos.org`. Consequently, integration tests must
-be self-contained: pre-build and add every required store closure to the VM
-(for example through `system.extraDependencies`) rather than expecting the VM
-to fetch missing paths from `cache.nixos.org` or source archives from upstream
-mirrors.
-
-If a VM check reports `Could not resolve host: cache.nixos.org`,
-`www.python.org`, or another external host, it means the test attempted to use
-a dependency that was not seeded into the VM. It is not, by itself, evidence of
-a host DNS issue or a `cache.nixos.org` outage. Run the nmt unit tests first;
-then identify and seed the missing closure before treating the VM test as
-validated.
-
-## Development shell
-
-This flake exposes a dev shell that prepares a temporary `$HOME` pointing the relevant tools at this checkout's `.config/`:
-
-```bash
-nix develop .#default
-```
-
-## Notes
-
-- Files under `.config/` are discovered recursively at evaluation time, so new config subdirectories are picked up automatically on the next rebuild.
-- Mutable mode updates existing files immediately, but adding or removing files still requires a rebuild.
+See [docs/architecture.md](docs/architecture.md) for the design boundaries and
+invariants.

@@ -20,6 +20,6 @@ in
     home.sessionVariables.SHELL = "${pkgs.fish}/bin/fish";
 
     # Needed so GUI apps such as kitty can resolve configured fonts.
-    fonts.fontconfig.enable = true;
+    fonts.fontconfig.enable = cfg.features.desktop.enable;
   };
 }
