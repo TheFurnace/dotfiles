@@ -8,32 +8,35 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  modules:
-    name: Home Manager module tests
+  verify:
+    name: Verify and report
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: nixbuild/nix-quick-install-action@v34
-      - name: Run nmt suite
-        run: nix run .#packages.x86_64-linux.tests
-
-  flake-shape:
-    name: Evaluate Linux outputs
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
-      - name: Evaluate x86_64 and aarch64 outputs
-        run: |
-          nix eval .#packages.x86_64-linux --apply builtins.attrNames
-          nix eval .#packages.aarch64-linux --apply builtins.attrNames
-          nix eval .#apps.x86_64-linux --apply builtins.attrNames
-          nix eval .#apps.aarch64-linux --apply builtins.attrNames
+        with:
+          nix_conf: |
+            experimental-features = nix-command flakes
+      - name: Run applicable verification suites
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: python3 tests/verifications.py all --output-dir test-results
+      - name: Publish unified test results
+        if: ${{ always() && !cancelled() }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Unified test results
+          path: test-results/*.xml
+          reporter: java-junit
+          list-suites: all
+          list-tests: all
