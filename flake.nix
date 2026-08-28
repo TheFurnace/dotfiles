@@ -35,6 +35,24 @@
         inherit nixpkgs home-manager homeModule nixosModule;
       };
 
+      # Unlike the generic library surface above, these repository-local
+      # values make a clone directly activatable. Keep personalization in one
+      # obvious file instead of scattering identity through flake.nix.
+      directDefaults = import ./defaults.nix;
+
+      defaultHomeConfiguration = helperLib.mkHomeConfiguration {
+        inherit (directDefaults) system username homeDirectory;
+        stateVersion = directDefaults.homeStateVersion;
+        extraModules = directDefaults.homeModules;
+      };
+
+      defaultNixosConfiguration = helperLib.mkNixosConfiguration {
+        inherit (directDefaults) system hostname username homeDirectory;
+        stateVersion = directDefaults.homeStateVersion;
+        inherit (directDefaults) nixosStateVersion;
+        extraModules = directDefaults.nixosModules;
+      };
+
       exampleHomeConfiguration = helperLib.mkHomeConfiguration {
         username = "demo";
         homeDirectory = "/home/demo";
@@ -81,6 +99,17 @@
         inherit self home-manager nixpkgs nix-index-database;
         pkgs = pkgsFor defaultSystem;
       };
+
+      # Force the important values in both direct configurations without
+      # making the fast check build an entire NixOS system closure.
+      directConfigurationsCheck =
+        assert defaultHomeConfiguration.config.home.username == directDefaults.username;
+        assert defaultHomeConfiguration.config.home.homeDirectory == directDefaults.homeDirectory;
+        assert defaultNixosConfiguration.config.networking.hostName == directDefaults.hostname;
+        assert defaultNixosConfiguration.config.users.users.${directDefaults.username}.isNormalUser;
+        (pkgsFor directDefaults.system).runCommand "dotfiles-direct-configurations" { } ''
+          touch "$out"
+        '';
     in
     {
       # Public helpers for downstream flakes.
@@ -90,10 +119,16 @@
       homeManagerModules.default = homeModule;
       nixosModules.default = nixosModule;
 
-      # Small built-in examples that also exercise the exported helpers.
-      homeConfigurations.example = exampleHomeConfiguration;
+      # Direct clone targets plus small generic examples of the helpers.
+      homeConfigurations = {
+        default = defaultHomeConfiguration;
+        example = exampleHomeConfiguration;
+      };
 
-      nixosConfigurations.example = exampleNixosConfiguration;
+      nixosConfigurations = {
+        default = defaultNixosConfiguration;
+        example = exampleNixosConfiguration;
+      };
       devShells = devShellModule.devShells;
 
       # Individual nmt test derivations, prefixed with "test-" so the Python
@@ -115,6 +150,10 @@
       # `nix build .#checks.x86_64-linux.<name>` works for ad-hoc invocation.
       checks = forAllSystems (system: {
         nmt = (testSuiteFor system).build.all;
-      } // nixpkgs.lib.optionalAttrs (system == defaultSystem) integrationTests);
+      }
+      // nixpkgs.lib.optionalAttrs (system == directDefaults.system) {
+        direct-configurations = directConfigurationsCheck;
+      }
+      // nixpkgs.lib.optionalAttrs (system == defaultSystem) integrationTests);
     };
 }

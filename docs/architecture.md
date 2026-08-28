@@ -25,10 +25,17 @@ interface.
 This is a conscious reproducibility trade-off: rebuilding the environment is
 repeatable, while updating an agent is an explicit mutable operation.
 
-### Consumers own identity and machines
+### Generic consumers own identity and machines
 
 Usernames, home directories, state versions, secrets, Git author identity,
-host hardware, and host-specific NixOS settings stay in consuming flakes.
+host hardware, and host-specific NixOS settings stay in consuming flakes when
+the repository is used as a library.
+
+A direct clone is also a consumer. Its non-secret identity defaults live in
+`defaults.nix`, which feeds only `homeConfigurations.default` and
+`nixosConfigurations.default`. Machine hardware and boot decisions remain
+explicit modules referenced from that file; the reusable module layer never
+guesses them.
 
 ## Composition
 
@@ -44,6 +51,9 @@ flake.nix
 │   └── Fish login-shell integration
 ├── lib.mkHomeConfiguration
 ├── lib.mkNixosConfiguration
+├── defaults.nix
+│   ├── homeConfigurations.default
+│   └── nixosConfigurations.default
 └── installer app
     ├── writes a small consumer flake
     ├── optionally activates it

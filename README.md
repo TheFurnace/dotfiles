@@ -14,7 +14,55 @@ The supported systems are `x86_64-linux` and `aarch64-linux`. The intended
 deployment targets are NixOS, standalone Home Manager, and generic Linux
 environments such as Debian, Ubuntu, and WSL.
 
+## Use a clone directly
+
+Clone the repository and edit [`defaults.nix`](defaults.nix) once for the
+target user and machine:
+
+```sh
+git clone https://github.com/TheFurnace/dotfiles.git
+cd dotfiles
+$EDITOR defaults.nix
+```
+
+The file supplies the built-in `default` configurations while the exported
+modules and constructors remain generic.
+
+For standalone Home Manager, build and activate the configuration without
+creating a second consumer flake:
+
+```sh
+nix build .#homeConfigurations.default.activationPackage
+./result/activate
+```
+
+If the Home Manager CLI is already installed, the usual command is equivalent:
+
+```sh
+home-manager switch --flake .#default
+```
+
+On NixOS, first replace the tracked hardware placeholder with the configuration
+generated for that machine. Add any other host-specific modules, including the
+appropriate boot-loader configuration, to `nixosModules` in `defaults.nix`.
+Then activate the direct NixOS target:
+
+```sh
+cp /etc/nixos/hardware-configuration.nix nixos/hardware-configuration.nix
+$EDITOR defaults.nix
+sudo nixos-rebuild switch --flake .#default
+```
+
+The tracked placeholder contains low-priority fallbacks for a conventional
+UEFI system with an ext4 root labelled `nixos`, solely so a fresh clone remains
+evaluable. Do not treat those as a substitute for the generated machine file.
+The default output also provides the user, Home Manager environment, Fish login
+shell, hostname, and state versions.
+
 ## Quick bootstrap
+
+Cloning is optional for standalone Home Manager. The bootstrap app can instead
+generate a small consumer flake that follows this repository:
 
 The initial `nix run` must be executed by a Nix installation with flakes
 enabled.
@@ -148,9 +196,12 @@ configuration belong in the consuming repository.
 | `nixosModules.default` | NixOS integration around the Home Manager module |
 | `lib.mkHomeConfiguration` | Standalone Home Manager constructor |
 | `lib.mkNixosConfiguration` | NixOS system constructor |
+| `homeConfigurations.default` | Direct standalone configuration from `defaults.nix` |
+| `nixosConfigurations.default` | Direct NixOS configuration from `defaults.nix` |
 | `apps.<system>.default` | Bootstrap and login-shell installer |
 | `packages.<system>.tests` | nmt test runner |
 | `checks.<system>.nmt` | Aggregate module test suite |
+| `checks.x86_64-linux.direct-configurations` | Evaluation check for both direct defaults |
 | `checks.x86_64-linux.installer-bootstrap` | Fresh-VM bootstrap test |
 
 ## Development and tests
