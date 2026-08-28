@@ -59,27 +59,32 @@ evaluable. Do not treat those as a substitute for the generated machine file.
 The default output also provides the user, Home Manager environment, Fish login
 shell, hostname, and state versions.
 
-## Quick bootstrap
+## Interactive install
 
-Cloning is optional for standalone Home Manager. The bootstrap app can instead
-generate a small consumer flake that follows this repository:
-
-The initial `nix run` must be executed by a Nix installation with flakes
-enabled.
+Cloning is optional for standalone Home Manager. With a flake-enabled Nix
+installation, launch the installer directly:
 
 ```sh
-# Generate ~/.config/home-manager/flake.nix.
-nix run github:TheFurnace/dotfiles -- init
-
-# Generate the consumer flake and activate it.
-nix run github:TheFurnace/dotfiles -- init --switch
-
-# Activate and then explicitly install Pi and Codex from upstream.
-nix run github:TheFurnace/dotfiles -- init --switch --with-ai
+nix run github:TheFurnace/dotfiles
 ```
 
-The installer is idempotent. It will not overwrite an existing Home Manager
-flake, and it preserves unrelated settings in the user's `nix.conf`.
+The installer detects the current user and platform, asks for the few settings
+that belong to the consumer, shows the complete plan, and activates after one
+final confirmation. It can also install Pi and Codex as an explicit interactive
+choice.
+
+Generated configurations are safe to rerun. If an unrelated Home Manager flake
+already exists, the installer asks before moving it to a `.pre-dotfiles` backup;
+the unattended mode refuses to replace it. Unrelated settings in the user's
+`nix.conf` are preserved.
+
+For CI or other automation, provide identity through the existing environment
+overrides and skip prompts explicitly:
+
+```sh
+DOTFILES_USER=me DOTFILES_HOME=/home/me \
+  nix run github:TheFurnace/dotfiles -- --unattended
+```
 
 On non-NixOS Linux, activation installs `dotfiles-setup-shell`. Run the
 suggested command once if Fish should become the login shell:
@@ -198,7 +203,7 @@ configuration belong in the consuming repository.
 | `lib.mkNixosConfiguration` | NixOS system constructor |
 | `homeConfigurations.default` | Direct standalone configuration from `defaults.nix` |
 | `nixosConfigurations.default` | Direct NixOS configuration from `defaults.nix` |
-| `apps.<system>.default` | Bootstrap and login-shell installer |
+| `apps.<system>.default` | Interactive install and login-shell setup |
 | `packages.<system>.tests` | nmt test runner |
 | `checks.<system>.nmt` | Aggregate module test suite |
 | `checks.x86_64-linux.direct-configurations` | Evaluation check for both direct defaults |

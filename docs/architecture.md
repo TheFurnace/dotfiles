@@ -55,9 +55,9 @@ flake.nix
 │   ├── homeConfigurations.default
 │   └── nixosConfigurations.default
 └── installer app
-    ├── writes a small consumer flake
-    ├── optionally activates it
-    └── optionally invokes dotfiles-ai after activation
+    ├── interactively reviews consumer identity and optional mutable tools
+    ├── writes and activates a small consumer flake
+    └── supports an explicit unattended path for automation
 ```
 
 ## Invariants
