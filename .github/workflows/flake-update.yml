@@ -22,7 +22,7 @@ jobs:
       - name: Validate modules
         run: nix run .#packages.x86_64-linux.tests
       - name: Validate bootstrap
-        run: nix build .#checks.x86_64-linux.installer-bootstrap
+        run: nix run .#installer-bootstrap-test -- --with-sudo
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
@@ -32,6 +32,6 @@ jobs:
             Automated `nix flake update` run.
 
             - Updated `flake.lock`
-            - Verified Home Manager modules and the bootstrap VM
+            - Verified Home Manager modules and the isolated bootstrap flow
           branch: automation/nix-flake-update
           delete-branch: true

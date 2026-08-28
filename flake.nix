@@ -92,10 +92,9 @@
         inherit nixpkgs home-manager self;
       };
 
-      # NixOS VM integration tests.  Kept separate from the nmt suite above
-      # because they boot real machines and exercise the user-facing
-      # bootstrap flow end-to-end.
-      integrationTests = import ./tests/integration {
+      # Host-side integration runners. Kept separate from checks because they
+      # execute nested Nix operations through the daemon after being built.
+      integrationTestRunners = import ./tests/integration {
         inherit self home-manager nixpkgs nix-index-database;
         pkgs = pkgsFor defaultSystem;
       };
@@ -141,19 +140,18 @@
       # Runnable test-runner script: `nix run .#packages.x86_64-linux.tests`
       packages = forAllSystems (system: {
         tests = (pkgsFor system).callPackage ./tests/package.nix { flake = self; };
+      } // nixpkgs.lib.optionalAttrs (system == defaultSystem) {
+        installer-bootstrap-test = integrationTestRunners.installer-bootstrap;
       });
 
       # `nix run github:TheFurnace/dotfiles` interactive installer.
       apps = installerModule.apps;
 
-      # Surface the integration tests so `nix flake check` runs them and
-      # `nix build .#checks.x86_64-linux.<name>` works for ad-hoc invocation.
       checks = forAllSystems (system: {
         nmt = (testSuiteFor system).build.all;
       }
       // nixpkgs.lib.optionalAttrs (system == directDefaults.system) {
         direct-configurations = directConfigurationsCheck;
-      }
-      // nixpkgs.lib.optionalAttrs (system == defaultSystem) integrationTests);
+      });
     };
 }

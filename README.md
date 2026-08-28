@@ -207,7 +207,7 @@ configuration belong in the consuming repository.
 | `packages.<system>.tests` | nmt test runner |
 | `checks.<system>.nmt` | Aggregate module test suite |
 | `checks.x86_64-linux.direct-configurations` | Evaluation check for both direct defaults |
-| `checks.x86_64-linux.installer-bootstrap` | Fresh-VM bootstrap test |
+| `packages.x86_64-linux.installer-bootstrap-test` | Isolated fresh-home bootstrap runner |
 
 ## Development and tests
 
@@ -222,15 +222,16 @@ nix run .#packages.x86_64-linux.tests
 # Run one subset while iterating.
 nix run .#packages.x86_64-linux.tests -- ai
 
-# Validate the real bootstrap flow in a fresh NixOS VM.
-nix build .#checks.x86_64-linux.installer-bootstrap
+# Validate the real bootstrap flow with an empty home and closure-only PATH.
+nix run .#installer-bootstrap-test
 
 # Evaluate/build every check for the current system.
 nix flake check
 ```
 
-Use nmt tests for normal module/configuration work. Run the VM test when the
-installer, generated consumer flake, or first-activation behavior changes.
+Use nmt tests for normal module/configuration work. Run the installer
+integration test when the installer, generated consumer flake, or
+first-activation behavior changes.
 
 See [docs/architecture.md](docs/architecture.md) for the design boundaries and
 invariants.

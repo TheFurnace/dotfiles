@@ -29,10 +29,10 @@ flake.nix                    Public outputs and per-system composition
   lib/setup-shell.nix        Shared login-shell implementation
 .config/                     Recursively managed XDG configuration assets
 tests/modules/               Fast nmt module tests
-tests/integration/           Fresh NixOS VM bootstrap tests
+tests/integration/           Fresh-home installer integration runner
 .github/workflows/ci.yml     Fast PR/main validation
 .github/workflows/installer.yml
-                             Path-scoped bootstrap VM validation
+                             Path-scoped bootstrap integration validation
 .github/workflows/flake-update.yml
                              Scheduled lock update and full validation
 ```
@@ -71,16 +71,17 @@ Add or update an nmt case when changing Home Manager options, package groups,
 generated shell content, or managed files. Register new cases in
 `tests/modules/default.nix`.
 
-Run the VM test only when changing installer commands, generated consumer
-flakes, login-shell setup, or fresh-machine behavior:
+Run the installer integration test when changing installer commands, generated
+consumer flakes, login-shell setup, or fresh-machine behavior:
 
 ```sh
-nix build .#checks.x86_64-linux.installer-bootstrap
+nix run .#installer-bootstrap-test
 ```
 
-The integration VM has no dependable outbound Internet. Seed every required
-store closure through `system.extraDependencies`; never weaken TLS or Nix
-security to make a VM test pass.
+The integration runner scrubs the environment, uses an empty disposable home,
+and gives the installer an unusable inherited PATH. Keep every required source
+and executable in its Nix closure; never weaken TLS or Nix security to make the
+test pass.
 
 For cross-platform output changes, evaluate both supported systems:
 
@@ -97,5 +98,5 @@ nix eval .#apps.aarch64-linux --apply builtins.attrNames
 2. Keep the reusable core and mutable edge boundary explicit.
 3. Add focused tests while implementing.
 4. Run the complete nmt suite.
-5. Run the installer VM test only when its contract changed.
+5. Run the installer integration test only when its contract changed.
 6. Review the final diff and commit descriptive, coherent changes.

@@ -20,7 +20,20 @@ let
 
       installer = pkgs.writeShellApplication {
         name = "install-dotfiles";
-        runtimeInputs = [ pkgs.nix pkgs.git hmPackage ];
+        # Keep the app independent of whatever happens to be installed on the
+        # host. The integration runner starts it with an unusable inherited
+        # PATH and therefore enforces this list as the executable contract.
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.diffutils
+          pkgs.gawk
+          pkgs.getent
+          pkgs.git
+          pkgs.gnugrep
+          pkgs.gnused
+          pkgs.nix
+          hmPackage
+        ];
         text = ''
           ${setupShellScript}
           export DOTFILES_INSTALLER_SYSTEM=${pkgs.lib.escapeShellArg system}

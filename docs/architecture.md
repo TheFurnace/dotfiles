@@ -69,14 +69,16 @@ flake.nix
 5. Mutable mode requires an explicit absolute checkout path.
 6. Configuration honors Home Manager's resolved XDG paths.
 7. The bootstrap-generated flake records the platform of the installer app.
-8. Fast module tests cover generated state; VM tests cover fresh-machine
-   behavior only.
+8. Fast module tests cover generated state; the host-side integration runner
+   covers fresh-user bootstrap behavior with an empty home and closure-only
+   executable environment.
 
 ## Supported platforms
 
 The flake publishes packages, apps, tests, and development shells for
-`x86_64-linux` and `aarch64-linux`. The installer VM check is currently an
-`x86_64-linux` check because that is the available CI virtualization target.
+`x86_64-linux` and `aarch64-linux`. The installer integration runner is
+currently published for `x86_64-linux`, matching the CI host used to exercise
+the generic-Linux bootstrap path.
 
 Darwin is intentionally not advertised. Supporting it later should begin with
 an explicit platform contract and CI coverage rather than accidental

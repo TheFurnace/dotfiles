@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   bootstrap:
-    name: Fresh NixOS VM bootstrap
+    name: Fresh-home bootstrap
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -30,11 +30,5 @@ jobs:
         with:
           nix_conf: |
             experimental-features = nix-command flakes
-            system-features = nixos-test benchmark big-parallel kvm
-      - name: Enable KVM access
-        run: |
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          sudo chmod 666 /dev/kvm
-      - name: Build installer test
-        run: nix build --print-build-logs .#checks.x86_64-linux.installer-bootstrap
+      - name: Run installer test
+        run: nix run --print-build-logs .#installer-bootstrap-test -- --with-sudo

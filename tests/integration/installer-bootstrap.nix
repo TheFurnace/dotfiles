@@ -1,242 +1,192 @@
-# End-to-end VM test for the interactive `nix run` installer.
+# Host-side end-to-end test for the interactive `nix run` installer.
 #
-# Exercises the actual user-facing bootstrap flow:
-#
-#   1. boot a NixOS VM (shared base module + alice user from ./lib.nix)
-#   2. run the installer as alice with DOTFILES_URL / DOTFILES_NIXPKGS_URL /
-#      DOTFILES_HOME_MANAGER_URL pointed at the local store paths of this
-#      flake's own inputs so the written flake locks reproducibly
-#   3. run the unattended automation path used by this non-interactive test
-#   4. assert that the flake was written and activation produced the profile,
-#      gcroot, and config-file symlinks
-#   5. re-run the installer and confirm idempotent behaviour
-#
-# To run directly:
-#
-#   nix build .#checks.x86_64-linux.installer-bootstrap
-#
+# The runner deliberately starts the installer with an empty home, scrubbed
+# environment, and unusable inherited PATH. The app's Nix closure must supply
+# every executable it needs. Unlike a normal Nix build sandbox, the runner is
+# executed with `nix run` so nested Nix and Home Manager operations can reach
+# the host daemon.
 { pkgs, self, home-manager, nixpkgs, nix-index-database }:
 
 let
-  helpers = import ./lib.nix { inherit pkgs self home-manager nixpkgs nix-index-database; };
-  inherit (helpers) makeTest baseModule aliceModule system;
+  system = pkgs.stdenv.hostPlatform.system;
   installerProgram = self.apps.${system}.default.program;
-
-  # Pre-build the Home Manager activation package that the installer will
-  # construct inside the VM. Seeding its closure into the VM avoids the
-  # majority of substituter traffic when the installer runs — anything the
-  # in-VM evaluation derives that doesn't already exist in this closure can
-  # still be fetched from the default substituter via NAT.
-  aliceHomeConfig = self.lib.mkHomeConfiguration {
-    inherit system;
-    username = "alice";
-    homeDirectory = "/home/alice";
-    stateVersion = "25.11";
-  };
+  chshStub = pkgs.writeShellScript "dotfiles-test-chsh" ''
+    printf '%s\n' "$*" > "$DOTFILES_TEST_CHSH_LOG"
+  '';
 in
-makeTest {
-  name = "dotfiles-installer-bootstrap";
+pkgs.writeShellApplication {
+  name = "dotfiles-installer-bootstrap-test";
+  runtimeInputs = [
+    pkgs.coreutils
+    pkgs.gnugrep
+    pkgs.nix
+  ];
+  text = ''
+    with_sudo=false
+    if [[ ''${1:-} == --with-sudo ]]; then
+      with_sudo=true
+      shift
+    fi
+    if (($#)); then
+      printf 'Usage: dotfiles-installer-bootstrap-test [--with-sudo]\n' >&2
+      exit 2
+    fi
 
-  nodes.machine = { ... }: {
-    imports = [ baseModule aliceModule ];
+    test_home=$(mktemp -d "''${TMPDIR:-/tmp}/dotfiles-installer-test.XXXXXX")
+    chmod 700 "$test_home"
+    mkdir -m 700 "$test_home/runtime" "$test_home/tmp"
 
-    # Append the pre-built alice activation package so the bulk of the
-    # closure is already in the VM store before activation runs.
-    system.extraDependencies = [
-      aliceHomeConfig.activationPackage
-      aliceHomeConfig.config.home.path
-      # `home-manager switch` builds this result separately from the
-      # activation package to record displayed Home Manager news.
-      aliceHomeConfig.config.news.json.output
-      installerProgram
-      # The packages verified below must be present for the in-VM Home Manager
-      # evaluation; the VM has no outbound network.
-      pkgs.jq
-      pkgs.ripgrep
-    ];
-  };
+    cleanup() {
+      status=$?
+      if ((status != 0)) || [[ ''${KEEP_DOTFILES_TEST_HOME:-0} == 1 ]]; then
+        printf 'Installer test home retained at %s\n' "$test_home" >&2
+      elif [[ -n $test_home && -d $test_home && $test_home != / ]]; then
+        chmod -R u+w "$test_home" 2>/dev/null || true
+        rm -rf -- "$test_home"
+      fi
+      exit "$status"
+    }
+    trap cleanup EXIT
 
-  testScript = ''
-    import shlex
+    fail() {
+      printf 'FAIL: %s\n' "$*" >&2
+      exit 1
+    }
 
-    start_all()
-    machine.wait_for_unit("multi-user.target")
-    machine.wait_for_unit("user@1000.service")
+    assert_file_contains() {
+      local path=$1
+      local expected=$2
+      [[ -f $path ]] || fail "expected a file at $path"
+      grep -Fqx -- "$expected" "$path" ||
+        fail "expected $path to contain: $expected"
+    }
 
-    def alice_cmd(cmd):
-        # `su -l` starts a login shell so XDG_RUNTIME_DIR and the user bus
-        # are wired up the same way an interactive login would.
-        return "su -l alice -c " + shlex.quote(cmd)
+    run_installer() {
+      env -i \
+        HOME="$test_home" \
+        USER="$(id -un)" \
+        LOGNAME="$(id -un)" \
+        PATH=/path-that-does-not-exist \
+        TMPDIR="$test_home/tmp" \
+        XDG_CACHE_HOME="$test_home/.cache" \
+        XDG_CONFIG_HOME="$test_home/.config" \
+        XDG_DATA_HOME="$test_home/.local/share" \
+        XDG_RUNTIME_DIR="$test_home/runtime" \
+        XDG_STATE_HOME="$test_home/.local/state" \
+        DOTFILES_USER="$(id -un)" \
+        DOTFILES_HOME="$test_home" \
+        DOTFILES_STATE_VERSION=25.11 \
+        DOTFILES_FORCE_LOGIN_SHELL_SETUP="''${DOTFILES_FORCE_LOGIN_SHELL_SETUP:-0}" \
+        DOTFILES_URL="path:${self}" \
+        DOTFILES_NIXPKGS_URL="path:${nixpkgs}" \
+        DOTFILES_HOME_MANAGER_URL="path:${home-manager}" \
+        NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt" \
+        NIX_USER_CONF_FILES=/dev/null \
+        NIX_CONFIG=$'experimental-features = nix-command flakes\nflake-registry =\n' \
+        ${pkgs.nix}/bin/nix run "path:${self}" -- "$@"
+    }
 
-    def succeed_as_alice(cmd):
-        return machine.succeed(alice_cmd(cmd))
+    # Keep every locked source in the runner closure, including the nested
+    # nix-index-database input that the generated consumer flake inherits.
+    [[ -e ${nix-index-database} ]]
 
-    installer_env = (
-        "DOTFILES_URL=path:${self} "
-        "DOTFILES_NIXPKGS_URL=path:${nixpkgs} "
-        "DOTFILES_HOME_MANAGER_URL=path:${home-manager} "
-        "DOTFILES_USER=alice "
-        "DOTFILES_HOME=/home/alice "
-        "DOTFILES_STATE_VERSION=25.11 "
-        "NIX_USER_CONF_FILES=/dev/null "
-        "NIX_CONFIG="
-    )
+    printf 'Testing installer in empty home %s\n' "$test_home"
 
-    with subtest("legacy init command points users to the interactive installer"):
-        result = machine.fail(
-            alice_cmd(f"{installer_env} nix run dotfiles -- init")
-        )
-        assert "replaced by the interactive installer" in result, result
+    if output=$(run_installer init 2>&1); then
+      fail "legacy init command unexpectedly succeeded"
+    fi
+    [[ $output == *"replaced by the interactive installer"* ]] ||
+      fail "legacy init command did not explain its replacement"
 
-    with subtest("interactive installer requires a terminal"):
-        result = machine.fail(
-            alice_cmd(
-                f"{installer_env} nix run dotfiles </dev/null 2>&1"
-            )
-        )
-        assert "interactive installer needs a terminal" in result, result
-        assert "--unattended" in result, result
+    if output=$(run_installer </dev/null 2>&1); then
+      fail "interactive installer unexpectedly ran without a terminal"
+    fi
+    [[ $output == *"interactive installer needs a terminal"* && $output == *"--unattended"* ]] ||
+      fail "non-terminal error did not suggest --unattended"
 
-    with subtest("unattended installer writes the flake and activates"):
-        succeed_as_alice(f"{installer_env} nix run dotfiles -- --unattended")
-        machine.succeed("test -f /home/alice/.config/home-manager/flake.nix")
-        machine.succeed(
-            "grep -Fx '# Generated by TheFurnace/dotfiles installer.' "
-            "/home/alice/.config/home-manager/flake.nix"
-        )
+    run_installer --unattended
 
-    with subtest("installer creates user nix.conf with flake support"):
-        machine.succeed("test -f /home/alice/.config/nix/nix.conf")
-        machine.succeed(
-            "grep -Fx 'experimental-features = nix-command flakes' "
-            "/home/alice/.config/nix/nix.conf"
-        )
+    flake_path="$test_home/.config/home-manager/flake.nix"
+    nix_conf="$test_home/.config/nix/nix.conf"
+    assert_file_contains "$flake_path" '# Generated by TheFurnace/dotfiles installer.'
+    grep -Fq 'system        = "${system}";' "$flake_path" ||
+      fail "generated Home Manager flake has the wrong platform"
+    assert_file_contains "$nix_conf" 'experimental-features = nix-command flakes'
 
-    with subtest("installer preserves user nix.conf and stays idempotent"):
-        machine.succeed(
-            "printf 'substituters = https://cache.nixos.org\\n"
-            "experimental-features = nix-command\\n' "
-            "> /home/alice/.config/nix/nix.conf"
-        )
-        succeed_as_alice(f"{installer_env} nix run dotfiles -- --unattended")
-        machine.succeed(
-            "grep -Fx 'substituters = https://cache.nixos.org' "
-            "/home/alice/.config/nix/nix.conf"
-        )
-        machine.succeed(
-            "grep -Fx 'experimental-features = nix-command flakes' "
-            "/home/alice/.config/nix/nix.conf"
-        )
-        machine.succeed(
-            "[ \"$(grep -c '^experimental-features = ' /home/alice/.config/nix/nix.conf)\" = 1 ]"
-        )
+    printf '%s\n' \
+      'substituters = https://cache.nixos.org' \
+      'experimental-features = nix-command' > "$nix_conf"
+    run_installer --unattended
+    assert_file_contains "$nix_conf" 'substituters = https://cache.nixos.org'
+    assert_file_contains "$nix_conf" 'experimental-features = nix-command flakes'
+    [[ $(grep -c '^experimental-features = ' "$nix_conf") == 1 ]] ||
+      fail "installer left duplicate experimental-features settings"
 
-    with subtest("Home Manager flake was written to XDG config home"):
-        machine.succeed(
-            "test -f /home/alice/.config/home-manager/flake.nix"
-        )
-        machine.succeed(
-            "grep -F 'system        = \"x86_64-linux\";' "
-            "/home/alice/.config/home-manager/flake.nix"
-        )
+    profile="$test_home/.local/state/nix/profiles/home-manager"
+    gcroot="$test_home/.local/state/home-manager/gcroots/current-home"
+    [[ -e $profile ]] || fail "Home Manager profile was not activated"
+    [[ -L $gcroot ]] || fail "Home Manager current-home gcroot is missing"
 
-    with subtest("Home Manager profile and gcroot exist"):
-        machine.succeed(
-            "test -e /home/alice/.local/state/nix/profiles/home-manager"
-        )
-        machine.succeed(
-            "test -L /home/alice/.local/state/home-manager/gcroots/current-home"
-        )
+    [[ -e $test_home/.config/fish/config.fish ]] || fail "Fish config is missing"
+    for path in \
+      "$test_home/.config/git/config" \
+      "$test_home/.config/nvim/init.lua" \
+      "$test_home/.config/kitty/kitty.conf" \
+      "$test_home/.config/oh-my-posh/themes/lambda.omp.json"
+    do
+      [[ -L $path ]] || fail "expected managed symlink at $path"
+    done
 
-    with subtest("dotfiles config files are linked into alice's home"):
-        # Fish is enabled via programs.fish in the dotfiles Home Manager
-        # module, so its config should be present even though .config/fish/
-        # isn't in the repo.
-        succeed_as_alice("test -e /home/alice/.config/fish/config.fish")
-        # These come from .config/ in the repo via the config-files module.
-        succeed_as_alice("test -L /home/alice/.config/git/config")
-        succeed_as_alice("test -L /home/alice/.config/nvim/init.lua")
-        succeed_as_alice("test -L /home/alice/.config/kitty/kitty.conf")
-        succeed_as_alice(
-            "test -L /home/alice/.config/oh-my-posh/themes/lambda.omp.json"
-        )
+    for program in jq rg dotfiles-ai; do
+      [[ -x $test_home/.nix-profile/bin/$program ]] ||
+        fail "$program is missing from the activated profile"
+    done
 
-    with subtest("AI manager and core packages are available on PATH"):
-        succeed_as_alice("test -x /home/alice/.nix-profile/bin/jq")
-        succeed_as_alice("test -x /home/alice/.nix-profile/bin/rg")
-        succeed_as_alice("test -x /home/alice/.nix-profile/bin/dotfiles-ai")
+    first_generation=$(readlink "$gcroot")
+    run_installer --unattended
+    second_generation=$(readlink "$gcroot")
+    [[ $first_generation == "$second_generation" ]] ||
+      fail "current-home gcroot changed across idempotent runs"
 
-    with subtest("installer is idempotent on a second run"):
-        first_gen = machine.succeed(
-            "readlink /home/alice/.local/state/home-manager/gcroots/current-home"
-        ).strip()
-        succeed_as_alice(f"{installer_env} nix run dotfiles -- --unattended")
-        second_gen = machine.succeed(
-            "readlink /home/alice/.local/state/home-manager/gcroots/current-home"
-        ).strip()
-        assert first_gen == second_gen, (
-            "current-home gcroot changed across idempotent runs: "
-            f"{first_gen!r} -> {second_gen!r}"
-        )
+    output=$(DOTFILES_FORCE_LOGIN_SHELL_SETUP=1 run_installer --unattended)
+    [[ $output == *"setup-shell fish"* ]] ||
+      fail "generic-Linux activation did not print the login-shell hint"
 
-    with subtest("standalone Linux install prints setup-shell hint when login shell isn't fish"):
-        result = succeed_as_alice(
-            f"{installer_env} "
-            "DOTFILES_FORCE_LOGIN_SHELL_SETUP=1 "
-            "nix run dotfiles -- --unattended"
-        )
-        assert "setup-shell fish" in result, (
-            "expected install to hint at 'setup-shell fish' when the "
-            f"login shell isn't fish yet, got:\n{result}"
-        )
+    if [[ $(id -u) -ne 0 ]]; then
+      if output=$(run_installer setup-shell fish 2>&1); then
+        fail "setup-shell unexpectedly succeeded without root"
+      fi
+      [[ $output == *"must be run with sudo"* && $output == *"setup-shell fish"* ]] ||
+        fail "setup-shell root refusal did not include the expected guidance"
+    fi
 
-    with subtest("setup-shell requires root"):
-        result = machine.fail(alice_cmd(f"{installer_env} nix run dotfiles -- setup-shell fish"))
-        assert "must be run with sudo" in result, (
-            f"expected setup-shell to refuse to run as a normal user, got:\n{result}"
-        )
-        assert "sudo nix run" in result and "setup-shell fish" in result, (
-            "expected the refusal message to suggest the exact sudo command, "
-            f"got:\n{result}"
-        )
+    if run_installer setup-shell zsh >/dev/null 2>&1; then
+      fail "setup-shell accepted an unsupported shell"
+    fi
 
-    with subtest("setup-shell (run as root) appends shells entries and calls chsh"):
-        machine.succeed(
-            alice_cmd(
-                "mkdir -p /home/alice/.local/bin /home/alice/.local/state\n"
-                "cat > /home/alice/.local/bin/test-chsh <<'EOF'\n"
-                "#!/bin/sh\n"
-                "printf '%s\\n' \"$*\" > /home/alice/.local/state/test-chsh.log\n"
-                "exit 0\n"
-                "EOF\n"
-                "chmod +x /home/alice/.local/bin/test-chsh\n"
-                "printf '/bin/sh\\n' > /home/alice/.local/state/test-shells"
-            )
-        )
-        machine.succeed(
-            "DOTFILES_USER=alice "
-            "DOTFILES_HOME=/home/alice "
-            "DOTFILES_CHSH=/home/alice/.local/bin/test-chsh "
-            "DOTFILES_SHELLS_FILE=/home/alice/.local/state/test-shells "
-            "nix run dotfiles -- setup-shell fish"
-        )
-        machine.succeed(
-            "grep -Fx '/home/alice/.nix-profile/bin/fish' "
-            "/home/alice/.local/state/test-shells"
-        )
-        machine.succeed(
-            "grep -Fx -- '-s /home/alice/.nix-profile/bin/fish alice' "
-            "/home/alice/.local/state/test-chsh.log"
-        )
-        machine.succeed(
-            "[ \"$(grep -c '^/home/alice/.nix-profile/bin/fish$' "
-            "/home/alice/.local/state/test-shells)\" = 1 ]"
-        )
+    if $with_sudo; then
+      sudo_program="''${DOTFILES_TEST_SUDO:-/usr/bin/sudo}"
+      [[ -x $sudo_program ]] || fail "--with-sudo requested but $sudo_program is unavailable"
+      shells_file="$test_home/test-shells"
+      chsh_log="$test_home/test-chsh.log"
+      printf '/bin/sh\n' > "$shells_file"
 
-    with subtest("setup-shell rejects unsupported shell names"):
-        machine.fail(
-            "DOTFILES_USER=alice DOTFILES_HOME=/home/alice "
-            "nix run dotfiles -- setup-shell zsh"
-        )
+      "$sudo_program" -n ${pkgs.coreutils}/bin/env -i \
+        PATH=/path-that-does-not-exist \
+        DOTFILES_USER="$(id -un)" \
+        DOTFILES_HOME="$test_home" \
+        DOTFILES_CHSH="${chshStub}" \
+        DOTFILES_TEST_CHSH_LOG="$chsh_log" \
+        DOTFILES_SHELLS_FILE="$shells_file" \
+        DOTFILES_URL="path:${self}" \
+        ${installerProgram} setup-shell fish
+
+      assert_file_contains "$shells_file" "$test_home/.nix-profile/bin/fish"
+      assert_file_contains "$chsh_log" "-s $test_home/.nix-profile/bin/fish $(id -un)"
+      [[ $(grep -c -Fx "$test_home/.nix-profile/bin/fish" "$shells_file") == 1 ]] ||
+        fail "setup-shell added Fish to the shells file more than once"
+    fi
+
+    printf 'Installer bootstrap test passed\n'
   '';
 }
