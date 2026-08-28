@@ -24,12 +24,14 @@ Pass extra flags through to nix build::
 """
 
 import argparse
-import os
 import subprocess
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from textwrap import dedent
+
+from junit_report import TestResult, write_junit_xml
 
 SUCCESS_EMOJI = "✅"
 FAILURE_EMOJI = "❌"
@@ -111,7 +113,12 @@ class TestRunner:
             return tests
         return [t for t in tests if any(f in t for f in filters)]
 
-    def run_tests(self, tests_to_run: list[str], nix_args: list[str]) -> bool:
+    def run_tests(
+        self,
+        tests_to_run: list[str],
+        nix_args: list[str],
+        junit_xml: Path | None = None,
+    ) -> bool:
         """Build each test derivation; return True only if all pass."""
         if not tests_to_run:
             print(f"{INFO_EMOJI} No tests selected.", file=sys.stderr)
@@ -121,7 +128,7 @@ class TestRunner:
         count = len(tests_to_run)
         print(f"{INFO_EMOJI} Running {count} test(s)...")
         failed: list[str] = []
-        results: list[tuple[str, bool]] = []
+        results: list[TestResult] = []
 
         for i, test in enumerate(tests_to_run, 1):
             print(f"\n--- [{i}/{count}] {test} ---")
@@ -134,12 +141,16 @@ class TestRunner:
                 f".#legacyPackages.{system}.{test}",
                 *nix_args,
             ]
+            started = time.monotonic()
             try:
                 subprocess.run(cmd, check=True, cwd=self.repo_root)
-                results.append((test, True))
+                results.append(TestResult(test, True, time.monotonic() - started))
                 print(f"{SUCCESS_EMOJI} {test}")
-            except subprocess.CalledProcessError:
-                results.append((test, False))
+            except subprocess.CalledProcessError as e:
+                message = f"nix build exited with status {e.returncode}"
+                results.append(
+                    TestResult(test, False, time.monotonic() - started, message)
+                )
                 failed.append(test)
                 print(f"{FAILURE_EMOJI} {test}", file=sys.stderr)
 
@@ -152,41 +163,16 @@ class TestRunner:
             for t in failed:
                 print(f"  - {t}")
 
-        self._write_github_summary(results, count, failed)
+        if junit_xml is not None:
+            try:
+                write_junit_xml(junit_xml, "Home Manager module tests", results)
+                print(
+                    f"{INFO_EMOJI} JUnit report written to: {junit_xml}",
+                    file=sys.stderr,
+                )
+            except OSError as e:
+                raise TestRunnerError(f"Failed to write JUnit report: {e}") from e
         return all_passed
-
-    def _write_github_summary(
-        self, results: list[tuple[str, bool]], total: int, failed: list[str]
-    ) -> None:
-        """Write a Markdown job summary to $GITHUB_STEP_SUMMARY when running in CI."""
-        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-        if not summary_path:
-            return
-
-        lines: list[str] = ["## nmt Test Results", ""]
-        lines.append("| Test | Result |")
-        lines.append("|------|--------|")
-        for test, passed in results:
-            icon = SUCCESS_EMOJI if passed else FAILURE_EMOJI
-            status = "Passed" if passed else "Failed"
-            lines.append(f"| `{test}` | {icon} {status} |")
-
-        lines.append("")
-        if not failed:
-            lines.append(f"{SUCCESS_EMOJI} **All {total} test(s) passed.**")
-        else:
-            lines.append(
-                f"{FAILURE_EMOJI} **{len(failed)} of {total} test(s) failed.**"
-            )
-        lines.append("")
-
-        content = "\n".join(lines) + "\n"
-        try:
-            with open(summary_path, "a", encoding="utf-8") as f:
-                f.write(content)
-            print(f"{INFO_EMOJI} Job summary written to: {summary_path}", file=sys.stderr)
-        except OSError as e:
-            print(f"{FAILURE_EMOJI} Failed to write job summary: {e}", file=sys.stderr)
 
 
 def main() -> None:
@@ -205,7 +191,15 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "-l", "--list", action="store_true", help="List available tests without running them."
+        "-l",
+        "--list",
+        action="store_true",
+        help="List available tests without running them.",
+    )
+    parser.add_argument(
+        "--junit-xml",
+        type=Path,
+        help="Write test results to this JUnit XML file.",
     )
     parser.add_argument(
         "filters",
@@ -238,7 +232,7 @@ def main() -> None:
             print(f"\n{INFO_EMOJI} {len(tests)} test(s) found.", file=sys.stderr)
             return
 
-        if not runner.run_tests(tests, nix_args):
+        if not runner.run_tests(tests, nix_args, args.junit_xml):
             sys.exit(1)
 
     except TestRunnerError:
